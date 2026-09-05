@@ -375,7 +375,14 @@ class Narrador {
     this.ultimaFala = 0;
     if ('speechSynthesis' in window) {
       this._escolherVoz();
+      // a lista de vozes costuma chegar depois; nem todo navegador expõe
+      // addEventListener nesse objeto, daí o onvoiceschanged também
       speechSynthesis.addEventListener?.('voiceschanged', () => this._escolherVoz());
+      const anterior = speechSynthesis.onvoiceschanged;
+      speechSynthesis.onvoiceschanged = (e) => {
+        anterior?.call(speechSynthesis, e);
+        this._escolherVoz();
+      };
     }
   }
 
@@ -407,7 +414,10 @@ class Narrador {
   }
 
   falar(chave) {
-    if (!this.ligado || !this.disponivel) return false;
+    if (!this.ligado) return false;
+    // as vozes podem ter chegado depois da última verificação
+    if (!this.pronta) this._escolherVoz();
+    if (!this.disponivel) return false;
 
     // sem atropelo: uma fala de cada vez, com respiro entre elas
     const agora = Date.now();

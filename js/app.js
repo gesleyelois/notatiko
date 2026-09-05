@@ -1442,6 +1442,8 @@ function revelarCarta(j) {
    Som
    ========================================================= */
 
+let avisouNarracao = false;
+
 async function ligarSom(ligar) {
   estado.somLigado = ligar;
   efeitos.ligado = ligar;
@@ -1453,6 +1455,11 @@ async function ligarSom(ligar) {
     const ok = trilha.disponivel ? await trilha.tocar() : false;
     if (!ok && trilha.disponivel) toast('Toque em qualquer lugar para liberar o som');
     if (!trilha.disponivel) trilhaSintetica.tocar();
+    // narração depende de voz instalada no sistema: avisa em vez de ficar mudo
+    if (!narrador.disponivel && !avisouNarracao) {
+      avisouNarracao = true;
+      setTimeout(() => toast('Sem voz instalada neste aparelho: só música e efeitos'), 900);
+    }
   } else {
     trilha.parar();
     trilhaSintetica.parar();
