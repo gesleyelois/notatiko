@@ -2241,3 +2241,39 @@ input[type=range]::-moz-range-thumb {
   :root { --nome-time: 14px; --brasao: 30px; --medalha: 34px; }
   .emblema-txt small { font-size: 9px; }
 }
+
+/* =========================================================
+   Área de toque
+
+   Compactar o HUD deixou vários alvos abaixo dos 44px que um dedo pede.
+   Este pseudo-elemento amplia a área sensível sem mexer no desenho —
+   o que se vê continua do tamanho que a composição precisa.
+   ========================================================= */
+
+.alvo-generoso { position: relative; }
+.alvo-generoso::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+
+.btn-som, .medalha, .placa-tatica, .folha-fechar, .aba, .emblema, .chip-pos {
+  position: relative;
+}
+.btn-som::after, .medalha::after, .placa-tatica::after,
+.folha-fechar::after, .aba::after, .emblema::after, .chip-pos::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+/* o pseudo não pode tapar o conteúdo desenhado por cima dele */
+.medalha b, .medalha span, .medalha svg,
+.aba .contador, .placa-tatica b, .placa-tatica small { z-index: 1; }
