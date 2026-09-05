@@ -253,7 +253,7 @@ function credencialHTML(m) {
     <div class="credencial" data-membro="${m.id}">
       <span class="credencial-fita"></span>
       <span class="credencial-foto">${foto}</span>
-      <b class="credencial-nome">${escapar(m.nome)}</b>
+      <b class="credencial-nome${classeNome(m.nome)}">${escapar(m.nome)}</b>
       <span class="credencial-funcao">${escapar(m.funcao)}</span>
     </div>`;
 }
@@ -484,6 +484,28 @@ function ligarAcoesCarta(el, { jogador, slotId }) {
   });
 }
 
+/* ---------- abas: elenco e comissão ocupam o mesmo espaço ---------- */
+
+const ABAS = {
+  elenco:   { botao: '#aba-elenco',   painel: '#trilho' },
+  comissao: { botao: '#aba-comissao', painel: '#trilho-comissao' },
+};
+let abaAtiva = 'elenco';
+
+function abrirAba(nome, { som = true } = {}) {
+  if (!ABAS[nome] || abaAtiva === nome) return;
+  abaAtiva = nome;
+
+  for (const [chave, { botao, painel }] of Object.entries(ABAS)) {
+    const ativa = chave === nome;
+    const b = $(botao);
+    b.classList.toggle('ativa', ativa);
+    b.setAttribute('aria-selected', String(ativa));
+    $(painel).hidden = !ativa;
+  }
+  if (som) efeitos.tocar('toque');
+}
+
 /* ---------- seleção: trocar jogador em dois toques ---------- */
 
 function limparSelecao() {
@@ -516,6 +538,7 @@ async function aoTocarSlot(slot) {
   }
 
   if (!j && !estado.jogadores.length) return toast('Crie um jogador antes de escalar');
+  abrirAba('elenco', { som: false });   // é dele que sai o substituto
   estado.selecao = { tipo: 'slot', slotId: slot.id, jogadorId: j?.id || null };
   efeitos.tocar('toque');
   renderCampo();
@@ -1028,6 +1051,7 @@ function folhaMembro(existente) {
         const i = estado.comissao.findIndex((m) => m.id === registro.id);
         i >= 0 ? estado.comissao[i] = registro : estado.comissao.push(registro);
         fecharFolha();
+        abrirAba('comissao', { som: false });
         renderElenco();
         efeitos.tocar('guardar');
         toast(novo ? `${registro.nome} entrou na comissão` : `${registro.nome} atualizado`);
@@ -1043,6 +1067,7 @@ function folhaMembro(existente) {
         await DB.removerMembro(existente.id);
         estado.comissao = estado.comissao.filter((m) => m.id !== existente.id);
         fecharFolha();
+        abrirAba('comissao', { som: false });
         renderElenco();
         efeitos.tocar('excluir');
         toast(`${existente.nome} saiu da comissão`);
@@ -1336,6 +1361,7 @@ function folhaJogador(jogadorExistente, posicaoSugerida) {
         const i = estado.jogadores.findIndex((j) => j.id === registro.id);
         i >= 0 ? estado.jogadores[i] = registro : estado.jogadores.push(registro);
         fecharFolha();
+        abrirAba('elenco', { som: false });
         renderTudo();
         if (novo) { revelarCarta(registro); if (posicaoSugerida) await escalarAutomatico(registro); }
         else { efeitos.tocar('guardar'); toast(`${dados.apelido} atualizado`); }
@@ -1486,6 +1512,10 @@ $('#gramado').addEventListener('click', (e) => {
 $('#trilho').addEventListener('click', (e) => {
   if (!e.target.closest('.item-trilho')) limparSelecao();
 });
+
+for (const [nome, { botao }] of Object.entries(ABAS)) {
+  $(botao).addEventListener('click', () => { limparSelecao(); abrirAba(nome); });
+}
 
 $('#btn-tatica').addEventListener('click', () => { limparSelecao(); folhaTatica(); });
 $('#metrica-forca').addEventListener('click', folhaForca);

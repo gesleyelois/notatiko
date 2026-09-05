@@ -102,16 +102,20 @@
 
     <section class="coluna-elenco">
       <div class="elenco-topo">
-        <h2>Elenco <span class="contador" id="qtd-elenco">0</span></h2>
-      </div>
-      <div class="trilho" id="trilho"></div>
-
-      <div class="secao-comissao">
-        <div class="elenco-topo">
-          <h2>Comissão técnica <span class="contador" id="qtd-comissao">0</span></h2>
+        <div class="abas" role="tablist" aria-label="Elenco e comissão técnica">
+          <button type="button" class="aba ativa" id="aba-elenco" role="tab"
+                  aria-selected="true" aria-controls="trilho">
+            Elenco <span class="contador" id="qtd-elenco">0</span>
+          </button>
+          <button type="button" class="aba" id="aba-comissao" role="tab"
+                  aria-selected="false" aria-controls="trilho-comissao">
+            Comissão <span class="contador" id="qtd-comissao">0</span>
+          </button>
         </div>
-        <div class="trilho trilho-comissao" id="trilho-comissao"></div>
       </div>
+      <div class="trilho" id="trilho" role="tabpanel" aria-labelledby="aba-elenco"></div>
+      <div class="trilho trilho-comissao" id="trilho-comissao" role="tabpanel"
+           aria-labelledby="aba-comissao" hidden></div>
     </section>
 
   </div>

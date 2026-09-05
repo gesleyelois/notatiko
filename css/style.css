@@ -380,7 +380,6 @@ svg { display: block; width: 100%; height: 100%; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: .3em;
   touch-action: none;
   cursor: grab;
 }
@@ -394,6 +393,12 @@ svg { display: block; width: 100%; height: 100%; }
 
 /* etiqueta da posição sob a carta */
 .pilula {
+  /* encaixada na ponta da carta: o chanfro afina até um bico, então a faixa de
+     baixo está vazia. Fora dali, a carta do jogador de trás cobria o rótulo.
+     position+z-index porque a carta é posicionada e pintaria por cima. */
+  position: relative;
+  z-index: 1;
+  margin-top: -1.35em;
   font-family: var(--fonte-cond);
   font-size: min(2.3cqw, 1.7cqh, 11px);
   font-weight: 800;
@@ -619,9 +624,49 @@ svg { display: block; width: 100%; height: 100%; }
    ========================================================= */
 
 .coluna-elenco {
+  /* medida única dos dois trilhos: a carta do jogador tem 7.4em de largura, a
+     credencial tem essa largura direto. Mesma proporção (1/1.4), mesmo tamanho. */
+  --carta-trilho: 78px;
   flex-shrink: 0;
   padding: 8px 0 calc(6px + env(safe-area-inset-bottom));
 }
+
+/* abas: elenco e comissão dividem o mesmo espaço, uma de cada vez */
+.abas {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 22px;
+  background: var(--painel-2);
+  border: 1px solid var(--borda);
+}
+.aba {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 13px;
+  border-radius: 20px;
+  font-family: var(--fonte-cond);
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--texto-3);
+  transition: color .15s, background .15s, transform .12s;
+}
+.aba:active { transform: scale(.97); }
+.aba .contador { background: rgba(255, 255, 255, .06); border-color: transparent; }
+.aba.ativa {
+  background: var(--painel-3);
+  color: var(--texto);
+  box-shadow: inset 0 0 0 1px var(--borda-clara);
+}
+.aba.ativa .contador {
+  background: linear-gradient(150deg, #6effc0, var(--acento));
+  color: #04180f;
+  font-weight: 700;
+}
+.trilho[hidden] { display: none; }
 
 .elenco-topo {
   display: flex;
@@ -686,7 +731,8 @@ svg { display: block; width: 100%; height: 100%; }
   /* folga no topo para a carta selecionada crescer sem ser cortada */
   padding: 15px 12px 7px;
   scroll-snap-type: x proximity;
-  min-height: 126px;
+  /* casado com a carta para que trocar de aba não mexa na altura da coluna */
+  min-height: calc(var(--carta-trilho) * 1.4 + 22px);
   align-items: flex-start;
 }
 .trilho::-webkit-scrollbar { height: 4px; }
@@ -699,7 +745,7 @@ svg { display: block; width: 100%; height: 100%; }
   cursor: grab;
   transition: transform .15s;
 }
-.item-trilho .carta { font-size: 10.5px; }
+.item-trilho .carta { font-size: calc(var(--carta-trilho) / 7.4); }
 .item-trilho:active { transform: scale(.95); }
 /* já está em campo: some da lista de disponíveis, sem resposta ao toque */
 .item-trilho.escalado {
@@ -712,7 +758,7 @@ svg { display: block; width: 100%; height: 100%; }
 
 .trilho-vazio {
   flex: 1;
-  min-height: 108px;
+  min-height: calc(var(--carta-trilho) * 1.4);
   border: 1px dashed var(--borda-clara);
   border-radius: var(--raio);
   display: flex;
@@ -1236,7 +1282,7 @@ input[type=range]::-moz-range-thumb {
   .escudo { width: 32px; height: 32px; }
   .time-txt b { font-size: 15px; }
   .barra-tatica { --valor-tam: 16px; }
-  .item-trilho .carta { font-size: 9.5px; }
+  .coluna-elenco { --carta-trilho: 70px; }
 
 
   /* cabeçalho do elenco precisa caber na coluna estreita */
@@ -1313,7 +1359,7 @@ input[type=range]::-moz-range-thumb {
 .carta-nova {
   flex-shrink: 0;
   width: 7.4em;
-  font-size: 10.5px;
+  font-size: calc(var(--carta-trilho) / 7.4);
   aspect-ratio: 1 / 1.4;
   position: relative;
   clip-path: polygon(0 9%, 11% 0, 89% 0, 100% 9%, 100% 88%, 50% 100%, 0 88%);
@@ -1833,6 +1879,8 @@ input[type=range]::-moz-range-thumb {
 .palco-credencial .credencial { width: 148px; position: relative; z-index: 1; }
 .palco-credencial .credencial-foto { width: 66px; height: 66px; border-radius: 13px; }
 .palco-credencial .credencial-nome { font-size: 17px; }
+.palco-credencial .credencial-nome.nome-g { font-size: 14px; }
+.palco-credencial .credencial-nome.nome-xg { font-size: 11.5px; }
 .palco-credencial .credencial-funcao { font-size: 11px; padding: 4px 10px; }
 
 /* chips de função */
@@ -1855,30 +1903,19 @@ input[type=range]::-moz-range-thumb {
 }
 
 /* =========================================================
-   Seção da comissão técnica — ao lado do elenco, sempre visível
+   Trilho da comissão técnica — aba irmã do elenco
    ========================================================= */
 
-.secao-comissao {
-  flex-shrink: 0;
-  border-top: 1px solid var(--borda);
-  margin-top: 4px;
-  padding-top: 8px;
-}
-.secao-comissao .elenco-topo { padding-bottom: 4px; }
-.secao-comissao .elenco-topo h2 { font-size: 12px; letter-spacing: 1px; }
-
-.trilho-comissao {
-  min-height: 106px;
-  padding-top: 6px;
-  align-items: flex-start;
-}
-/* credenciais menores aqui: a comissão é coadjuvante do elenco */
-.trilho-comissao .credencial { width: 74px; padding: 13px 6px 8px; }
-.trilho-comissao .credencial-foto { width: 34px; height: 34px; border-radius: 8px; }
+/* a credencial nasce com 92px; aqui ela adota a medida do trilho e os miolos
+   acompanham na mesma escala. */
+.trilho-comissao .credencial { width: var(--carta-trilho); padding: 13px 6px 8px; gap: 5px; }
+.trilho-comissao .credencial-fita { width: 29px; height: 7px; }
+.trilho-comissao .credencial-foto { width: 36px; height: 36px; border-radius: 8px; }
+/* mesma regra da carta: nome comprido encolhe a fonte em vez de virar "..." */
 .trilho-comissao .credencial-nome { font-size: 10px; }
-.trilho-comissao .credencial-funcao { font-size: 7.5px; padding: 2px 5px; }
-.trilho-comissao .carta-nova { width: 74px; font-size: 9px; }
-.trilho-comissao .trilho-vazio { min-height: 92px; font-size: 12px; }
+.trilho-comissao .credencial-nome.nome-g { font-size: 8.4px; letter-spacing: .02em; }
+.trilho-comissao .credencial-nome.nome-xg { font-size: 7.1px; letter-spacing: 0; }
+.trilho-comissao .credencial-funcao { font-size: 8px; padding: 2px 6px; }
 
 /* =========================================================
    Retrato: aproveita a largura da tela
@@ -1918,24 +1955,13 @@ input[type=range]::-moz-range-thumb {
     overscroll-behavior: contain;
   }
 
-  /* a comissão é consulta, não trabalho: entra bem compacta */
-  .secao-comissao { margin-top: 2px; padding-top: 5px; }
-  .secao-comissao .elenco-topo { padding-top: 0; padding-bottom: 2px; }
-  .secao-comissao .elenco-topo h2 { font-size: 10.5px; }
-  .trilho-comissao { min-height: 0; padding: 3px 12px 4px; gap: 7px; }
-  .trilho-comissao .credencial { width: 50px; padding: 9px 4px 6px; gap: 3px; border-radius: 9px; }
-  .trilho-comissao .credencial-fita { width: 22px; height: 5px; }
-  .trilho-comissao .credencial-foto { width: 22px; height: 22px; border-radius: 6px; }
-  .trilho-comissao .credencial-nome { font-size: 8px; }
-  .trilho-comissao .credencial-funcao { font-size: 6px; padding: 1px 3px; }
-  .trilho-comissao .carta-nova { width: 50px; font-size: 6.5px; }
-  .trilho-comissao .trilho-vazio { min-height: 0; font-size: 11px; padding: 8px; }
-
   /* barra e cabeçalhos mais justos, para sobrar campo */
   .barra-tatica { --barra-margem: 8px; --barra-h: 58px; }
   .elenco-topo { padding-bottom: 4px; }
-  .trilho { min-height: 0; padding-top: 2px; }
-  .item-trilho .carta { font-size: 9.5px; }
+  /* altura fixa (carta + respiro + os 4px da barra de rolagem) para que trocar
+     de aba não empurre o campo, já que só o elenco costuma transbordar. */
+  .trilho { min-height: calc(var(--carta-trilho) * 1.4 + 19px); padding-top: 8px; }
+  .coluna-elenco { --carta-trilho: 72px; }
 }
 
 @media (orientation: portrait) {
