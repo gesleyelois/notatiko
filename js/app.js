@@ -803,9 +803,9 @@ function reacaoDaEscalacao(slotId, entrandoId, saindoId, estavaCompleto) {
   const saindo = jogadorPorId(saindoId);
   if (saindo) {
     const diferenca = notaNaPosicao(entrando, slot.pos) - notaNaPosicao(saindo, slot.pos);
-    if (diferenca >= 2) return 'melhorou';
-    if (diferenca <= -2) return 'piorou';
-    return null;                       // empate técnico: não vale comentário
+    if (diferenca > 0) return 'melhorou';
+    if (diferenca < 0) return 'piorou';
+    return null;                       // nota igual: não há o que comentar
   }
 
   const goleiro = (pos) => pos === 'GOL';
@@ -822,6 +822,7 @@ async function tirarDoTime(slotId) {
   renderTudo();
   animarTransicao(antes, { apenas: [saindo] });
   efeitos.tocar('tirar');
+  setTimeout(() => narrador.falar('tirou'), 300);
 }
 
 async function escalarAutomatico(jogador) {
@@ -1399,9 +1400,9 @@ function confirmar({ titulo, texto, acao, cancelar = 'Manter' }) {
 function revelarCarta(j) {
   const camada = $('#revelacao');
   const nota = notaDe(j);
-  const titulo = nota >= 85 ? 'Craque no elenco'
-    : nota >= 75 ? 'Reforço de peso'
-    : 'Novo jogador no elenco';
+  const chave = nota >= 90 ? 'fenomeno' : nota >= 85 ? 'craque' : nota >= 75 ? 'reforco' : 'elenco';
+  // mesma frase na tela e na voz
+  const titulo = narrador.frase(chave) || 'Novo jogador no elenco';
 
   $('#revelacao-carta').innerHTML = cartaHTML(j, true);
   camada.querySelector('.revelacao-rotulo')?.remove();
@@ -1421,9 +1422,7 @@ function revelarCarta(j) {
     if (nota >= 85) efeitos.tocar('brilho');
     navigator.vibrate?.(25);
     // a fala entra depois do impacto, para não disputar com ele
-    setTimeout(() => narrador.falar(
-      nota >= 90 ? 'fenomeno' : nota >= 85 ? 'craque' : nota >= 75 ? 'reforco' : 'elenco'
-    ), 260);
+    setTimeout(() => narrador.dizer(titulo), 260);
   }, 950);
 
   const fechar = () => {

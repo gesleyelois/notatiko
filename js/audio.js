@@ -361,6 +361,9 @@ const FALAS = {
   golForaDeCasa: ['Goleiro na linha? Ousado!', 'Isso vai dar história.',
                   'No gol, com as mãos, era melhor.'],
 
+  // tirado de campo, mas segue no elenco
+  tirou:     ['Vai pro banco.', 'Saiu do time.', 'Fora da escalação.'],
+
   // jogador excluído do elenco
   dispensa:  ['Dispensado!', 'Fim de contrato.', 'Saiu do clube.'],
 };
@@ -418,8 +421,18 @@ class Narrador {
     return 'speechSynthesis' in window && this.pronta;
   }
 
+  // Sorteia a frase sem falar — permite exibir na tela exatamente o que a
+  // voz vai dizer.
+  frase(chave) {
+    return sortear(FALAS[chave] || []) || null;
+  }
+
   falar(chave) {
-    if (!this.ligado) return false;
+    return this.dizer(this.frase(chave));
+  }
+
+  dizer(texto) {
+    if (!this.ligado || !texto) return false;
     // as vozes podem ter chegado depois da última verificação
     if (!this.pronta) this._escolherVoz();
     if (!this.disponivel) return false;
@@ -428,9 +441,6 @@ class Narrador {
     const agora = Date.now();
     if (agora - this.ultimaFala < 2200) return false;
     this.ultimaFala = agora;
-
-    const texto = sortear(FALAS[chave] || []);
-    if (!texto) return false;
 
     try {
       speechSynthesis.cancel();
