@@ -392,20 +392,25 @@ class Narrador {
     const pt = vozes.filter((v) => v.lang?.toLowerCase().startsWith('pt'));
     if (!pt.length) { this.voz = null; this.pronta = false; return; }
 
-    // Nomes de voz masculina pt-BR mais comuns entre os sistemas. Não há campo
-    // de gênero na API, então a pista possível é o nome.
-    const masculinos = /daniel|felipe|ricardo|ant[oô]nio|j[uú]lio|heitor|f[aá]bio|marcelo|paulo|thiago|male|masculin/i;
+    // A API não expõe gênero; a pista possível é o nome.
+    const masculinos = /daniel|felipe|ricardo|ant[oô]nio|antonio|j[uú]lio|heitor|f[aá]bio|marcelo|paulo|thiago|diogo|male\b|masculin/i;
+    const femininos = /luciana|maria|fernanda|helena|ines|inês|joana|catarina|female|feminin/i;
 
     const nota = (v) => {
       let n = 0;
-      if (masculinos.test(v.name)) n += 8;          // voz masculina, como pedido
-      if (v.lang.toLowerCase() === 'pt-br') n += 4; // sotaque brasileiro
-      if (v.localService) n += 2;                   // instalada: funciona offline
+      if (v.lang.toLowerCase() === 'pt-br') n += 6;  // sotaque brasileiro
+      // No Linux o espeak publica ~100 variantes alteradas do mesmo idioma
+      // ("+Adam", "+Demonic"...). A voz base, sem sufixo, é a mais natural.
+      if (!v.name.includes('+')) n += 4;
+      if (masculinos.test(v.name)) n += 3;           // voz masculina, como pedido
+      if (v.localService) n += 2;                    // instalada: funciona offline
       return n;
     };
 
     this.voz = [...pt].sort((a, b) => nota(b) - nota(a))[0];
-    this.masculina = masculinos.test(this.voz.name);
+    // só baixa o tom quando a voz é reconhecidamente feminina; a base do
+    // espeak em pt-BR já é masculina e ficaria cavernosa se abaixasse
+    this.feminina = femininos.test(this.voz.name);
     this.pronta = true;
   }
 
@@ -435,7 +440,7 @@ class Narrador {
       try { if (this.voz) fala.voice = this.voz; } catch { /* usa a padrão */ }
       fala.lang = this.voz?.lang || 'pt-BR';
       fala.rate = 1.12;   // um pouco acelerado, como narração de jogo
-      fala.pitch = this.masculina ? 0.92 : 0.8;   // compensa quando só há voz feminina
+      fala.pitch = this.feminina ? 0.8 : 0.92;   // compensa quando só há voz feminina
       fala.volume = 0.9;
       speechSynthesis.speak(fala);
       return true;
