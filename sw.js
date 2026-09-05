@@ -1,4 +1,4 @@
-const CACHE_NAME = 'notatiko-v2';
+const CACHE_NAME = 'notatiko-v3';
 const ARQUIVOS_ESSENCIAIS = [
   './',
   './index.html',

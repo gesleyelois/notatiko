@@ -1687,29 +1687,6 @@ input[type=range]::-moz-range-thumb {
 }
 
 /* =========================================================
-   Abas do elenco / comissão
-   ========================================================= */
-
-.abas { display: flex; gap: 4px; }
-.aba {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
-  border-radius: 20px;
-  font-family: var(--fonte-cond);
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--texto-3);
-  transition: color .16s, background .16s;
-}
-.aba .contador { transition: inherit; }
-.aba.ativa { color: var(--texto); background: var(--sup-1); }
-.aba.ativa .contador { border-color: var(--borda-clara); color: var(--texto-2); }
-
-/* =========================================================
    Credencial da comissão técnica
    ========================================================= */
 
@@ -1836,3 +1813,29 @@ input[type=range]::-moz-range-thumb {
   color: #04180f;
   font-weight: 700;
 }
+
+/* =========================================================
+   Seção da comissão técnica — ao lado do elenco, sempre visível
+   ========================================================= */
+
+.secao-comissao {
+  flex-shrink: 0;
+  border-top: 1px solid var(--borda);
+  margin-top: 4px;
+  padding-top: 8px;
+}
+.secao-comissao .elenco-topo { padding-bottom: 4px; }
+.secao-comissao .elenco-topo h2 { font-size: 12px; letter-spacing: 1px; }
+
+.trilho-comissao {
+  min-height: 106px;
+  padding-top: 6px;
+  align-items: flex-start;
+}
+/* credenciais menores aqui: a comissão é coadjuvante do elenco */
+.trilho-comissao .credencial { width: 74px; padding: 13px 6px 8px; }
+.trilho-comissao .credencial-foto { width: 34px; height: 34px; border-radius: 8px; }
+.trilho-comissao .credencial-nome { font-size: 10px; }
+.trilho-comissao .credencial-funcao { font-size: 7.5px; padding: 2px 5px; }
+.trilho-comissao .carta-nova { width: 74px; font-size: 9px; }
+.trilho-comissao .trilho-vazio { min-height: 92px; font-size: 12px; }

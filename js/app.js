@@ -57,10 +57,7 @@ const PERFIS = {
   ATA: { rit: 80, fin: 84, pas: 62, dri: 76, def: 32, fis: 70 },
 };
 
-const FUNCOES = [
-  'Técnico', 'Auxiliar técnico', 'Preparador físico', 'Treinador de goleiros',
-  'Analista de desempenho', 'Médico', 'Massagista',
-];
+const FUNCOES = ['Técnico', 'Auxiliar técnico', 'Massagista'];
 
 const ORDEM_GRUPOS = ['gol', 'def', 'mei', 'ata'];
 const SETORES = [
@@ -81,7 +78,6 @@ const estado = {
   time: null,
   jogadores: [],
   comissao: [],
-  aba: 'elenco',
   escalacao: { ...TATICA_PADRAO, slots: {} },
   somLigado: lerPref('som', true),
   // seleção ativa: { tipo: 'slot'|'trilho', slotId?, jogadorId? }
@@ -575,16 +571,12 @@ function cartaNovoJogador() {
 function renderElenco() {
   const trilho = $('#trilho');
   $('#qtd-elenco').textContent = estado.jogadores.length;
-  $('#qtd-comissao').textContent = estado.comissao.length;
-  $('#abas').querySelectorAll('.aba').forEach((b) =>
-    b.classList.toggle('ativa', b.dataset.aba === estado.aba));
 
   trilho.innerHTML = '';
-  trilho.classList.toggle('escolhendo', estado.aba === 'elenco' && estado.selecao?.tipo === 'slot');
-
-  if (estado.aba === 'comissao') return renderComissao(trilho);
-
+  trilho.classList.toggle('escolhendo', estado.selecao?.tipo === 'slot');
   trilho.appendChild(cartaNovoJogador());
+
+  renderComissao();
 
   if (!estado.jogadores.length) {
     const aviso = document.createElement('div');
@@ -624,7 +616,11 @@ function renderElenco() {
   }
 }
 
-function renderComissao(trilho) {
+function renderComissao() {
+  const trilho = $('#trilho-comissao');
+  $('#qtd-comissao').textContent = estado.comissao.length;
+  trilho.innerHTML = '';
+
   const novo = document.createElement('button');
   novo.className = 'carta-nova comissao';
   novo.innerHTML = `<span class="carta-nova-interna">
@@ -637,7 +633,7 @@ function renderComissao(trilho) {
   if (!estado.comissao.length) {
     const aviso = document.createElement('div');
     aviso.className = 'trilho-vazio';
-    aviso.innerHTML = 'Sem comissão técnica ainda.<br>Adicione o técnico e a equipe.';
+    aviso.innerHTML = 'Adicione o técnico e a equipe.';
     trilho.appendChild(aviso);
     return;
   }
@@ -1452,15 +1448,6 @@ $('#gramado').addEventListener('click', (e) => {
 
 $('#trilho').addEventListener('click', (e) => {
   if (!e.target.closest('.item-trilho')) limparSelecao();
-});
-
-$('#abas').addEventListener('click', (e) => {
-  const aba = e.target.closest('.aba');
-  if (!aba || aba.dataset.aba === estado.aba) return;
-  estado.aba = aba.dataset.aba;
-  limparSelecao();
-  efeitos.tocar('toque');
-  renderElenco();
 });
 
 $('#btn-tatica').addEventListener('click', () => { limparSelecao(); folhaTatica(); });

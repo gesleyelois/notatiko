@@ -44,9 +44,24 @@ class Trilha {
 export const trilha = new Trilha();
 
 /* =========================================================
-   Efeitos das ações — sintetizados, curtos e discretos.
-   Seguem o mesmo botão de mudo da trilha.
+   Efeitos das ações.
+
+   Todos os sons saem da MESMA escala da trilha (Lá maior), então
+   qualquer combinação soa consonante — antes cada efeito tinha uma
+   frequência solta e o conjunto ficava desafinado.
    ========================================================= */
+
+// nota em semitons a partir do Lá 440
+const nt = (semitons) => 440 * Math.pow(2, semitons / 12);
+
+const NOTA = {
+  LA1: nt(-36), LA2: nt(-24), MI3: nt(-17), LA3: nt(-12),
+  DO3: nt(-8),  MI4: nt(-5),  LA4: nt(0),   DO5: nt(4),
+  MI5: nt(7),   FA5: nt(9),   LA5: nt(12),  MI6: nt(19), LA6: nt(24),
+};
+
+// Lá maior: as três notas que aparecem em quase todo efeito
+const TRIADE = [NOTA.LA4, NOTA.DO5, NOTA.MI5];
 
 class Efeitos {
   constructor() {
@@ -59,71 +74,94 @@ class Efeitos {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return null;
       this.ctx = new AC();
+      // barramento único: mantém todos os efeitos no mesmo nível e tira o
+      // brilho agressivo dos agudos
+      this.saida = this.ctx.createGain();
+      this.saida.gain.value = .9;
+      const suave = this.ctx.createBiquadFilter();
+      suave.type = 'lowpass';
+      suave.frequency.value = 5200;
+      this.saida.connect(suave).connect(this.ctx.destination);
     }
     if (this.ctx.state === 'suspended') this.ctx.resume();
     return this.ctx;
   }
 
-  _nota({ de, para, dur, tipo = 'sine', vol = .2, atraso = 0 }) {
+  _nota({ de, para = de, dur, tipo = 'triangle', vol = .12, atraso = 0 }) {
     const ctx = this._contexto();
     if (!ctx) return;
     const t = ctx.currentTime + atraso;
     const osc = ctx.createOscillator();
-    const ganho = ctx.createGain();
+    const g = ctx.createGain();
     osc.type = tipo;
     osc.frequency.setValueAtTime(de, t);
     if (para !== de) osc.frequency.exponentialRampToValueAtTime(para, t + dur);
-    ganho.gain.setValueAtTime(0.0001, t);
-    ganho.gain.exponentialRampToValueAtTime(vol, t + 0.012);
-    ganho.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    osc.connect(ganho).connect(ctx.destination);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + .012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(g).connect(this.saida);
     osc.start(t);
     osc.stop(t + dur + .02);
   }
 
+  // arpeja um acorde: usado nas confirmações
+  _acorde(notas, { dur = .4, vol = .1, passo = .045, tipo = 'triangle' } = {}) {
+    notas.forEach((freq, i) => this._nota({ de: freq, dur, tipo, vol, atraso: i * passo }));
+  }
+
   tocar(tipo) {
     if (!this.ligado) return;
-    if (tipo === 'toque') {
-      this._nota({ de: 540, para: 620, dur: .05, tipo: 'triangle', vol: .05 });
-    } else if (tipo === 'abrir') {
-      // painel subindo
-      this._nota({ de: 320, para: 640, dur: .16, tipo: 'sine', vol: .07 });
-    } else if (tipo === 'fechar') {
-      this._nota({ de: 620, para: 300, dur: .14, tipo: 'sine', vol: .06 });
-    } else if (tipo === 'tirar') {
-      // jogador saindo do time: desce
-      this._nota({ de: 300, para: 120, dur: .2, tipo: 'sine', vol: .16 });
-    } else if (tipo === 'excluir') {
-      this._nota({ de: 260, para: 90, dur: .3, tipo: 'sawtooth', vol: .1 });
-    } else if (tipo === 'tatica') {
-      // varredura ao remontar o time
-      this._nota({ de: 240, para: 900, dur: .28, tipo: 'triangle', vol: .09 });
-      this._nota({ de: 480, para: 1200, dur: .24, tipo: 'sine', vol: .05, atraso: .05 });
-    } else
-    if (tipo === 'pouso') {
-      // baque grave de carta assentando no gramado
-      this._nota({ de: 190, para: 62, dur: .22, tipo: 'sine', vol: .3 });
-      this._nota({ de: 900, para: 500, dur: .06, tipo: 'triangle', vol: .06 });
-    } else if (tipo === 'guardar') {
-      // confirmação: duas notas subindo
-      this._nota({ de: 660, para: 660, dur: .1, tipo: 'triangle', vol: .14 });
-      this._nota({ de: 990, para: 990, dur: .14, tipo: 'triangle', vol: .12, atraso: .09 });
-    } else if (tipo === 'revelar') {
-      // brilho da revelação da carta
-      this._nota({ de: 520, para: 1560, dur: .5, tipo: 'triangle', vol: .12 });
-      this._nota({ de: 780, para: 2340, dur: .45, tipo: 'sine', vol: .07, atraso: .06 });
-    } else if (tipo === 'impacto') {
-      // a carta assentando no fim da revelação: baque + acorde
-      this._nota({ de: 150, para: 52, dur: .3, tipo: 'sine', vol: .34 });
-      this._nota({ de: 440, para: 440, dur: .5, tipo: 'triangle', vol: .1, atraso: .02 });
-      this._nota({ de: 554, para: 554, dur: .5, tipo: 'triangle', vol: .09, atraso: .05 });
-      this._nota({ de: 659, para: 659, dur: .55, tipo: 'triangle', vol: .08, atraso: .08 });
-    } else if (tipo === 'brilho') {
-      // faísca extra para cartas de nota alta
-      this._nota({ de: 1320, para: 1980, dur: .3, tipo: 'sine', vol: .07 });
-      this._nota({ de: 1760, para: 2640, dur: .26, tipo: 'triangle', vol: .05, atraso: .07 });
-    } else if (tipo === 'pegar') {
-      this._nota({ de: 420, para: 620, dur: .07, tipo: 'triangle', vol: .08 });
+
+    switch (tipo) {
+      // seleção: uma nota só, curta e alta
+      case 'toque':
+        return this._nota({ de: NOTA.MI5, dur: .06, vol: .06 });
+
+      // painéis: quinta subindo e descendo
+      case 'abrir':
+        return this._nota({ de: NOTA.LA4, para: NOTA.MI5, dur: .15, tipo: 'sine', vol: .08 });
+      case 'fechar':
+        return this._nota({ de: NOTA.MI5, para: NOTA.LA4, dur: .14, tipo: 'sine', vol: .07 });
+
+      // carta assentando: fundamental grave + a quinta acima
+      case 'pouso':
+        this._nota({ de: NOTA.LA3, para: NOTA.LA2, dur: .22, tipo: 'sine', vol: .3 });
+        return this._nota({ de: NOTA.MI5, dur: .16, vol: .07, atraso: .02 });
+
+      // sair do time: cai uma quarta
+      case 'tirar':
+        return this._nota({ de: NOTA.MI4, para: NOTA.LA3, dur: .22, tipo: 'sine', vol: .18 });
+
+      // excluir: cai uma oitava, timbre mais fechado
+      case 'excluir':
+        this._nota({ de: NOTA.LA3, para: NOTA.LA2, dur: .3, tipo: 'sine', vol: .2 });
+        return this._nota({ de: NOTA.DO3, para: NOTA.LA2, dur: .26, tipo: 'triangle', vol: .07, atraso: .04 });
+
+      // confirmação: tríade de Lá maior subindo
+      case 'guardar':
+        return this._acorde(TRIADE, { dur: .34, vol: .1 });
+
+      // troca de tática: oitava varrida, acompanhando as cartas deslizando
+      case 'tatica':
+        this._nota({ de: NOTA.LA4, para: NOTA.LA5, dur: .3, tipo: 'sine', vol: .09 });
+        return this._nota({ de: NOTA.MI5, dur: .3, vol: .05, atraso: .12 });
+
+      // revelação: escala subindo até a oitava
+      case 'revelar':
+        return this._acorde([NOTA.LA4, NOTA.DO5, NOTA.MI5, NOTA.LA5],
+          { dur: .5, vol: .08, passo: .07, tipo: 'sine' });
+
+      // impacto no fim da revelação: baque grave + a tríade cheia
+      case 'impacto':
+        this._nota({ de: NOTA.LA2, para: NOTA.LA1, dur: .34, tipo: 'sine', vol: .34 });
+        return this._acorde(TRIADE, { dur: .6, vol: .12, passo: .03 });
+
+      // faísca das cartas de nota alta: as mesmas notas, duas oitavas acima
+      case 'brilho':
+        return this._acorde([NOTA.MI6, NOTA.LA6], { dur: .34, vol: .05, passo: .08, tipo: 'sine' });
+
+      default:
+        return;
     }
   }
 }
