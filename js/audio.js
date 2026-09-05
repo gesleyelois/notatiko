@@ -1,3 +1,5 @@
+import { FALAS, ARQUIVO_DA_FRASE } from './falas.js';
+
 /* =========================================================
    Efeitos das ações.
 
@@ -284,44 +286,19 @@ export const trilhaSintetica = new TrilhaSintetica();
 /* =========================================================
    Narração.
 
-   Usa a voz do próprio aparelho (Web Speech API): nada é baixado e nada
-   depende de gravação de terceiros. As frases são vocabulário comum de
-   futebol — de propósito não imitam a voz nem os bordões de locutores
-   reais, que são identidade de pessoas vivas.
+   Dois caminhos, nesta ordem:
+
+   1. as gravações de audio/falas/, feitas uma vez por
+      ferramentas/gerar-vozes.py. Timbre igual em qualquer aparelho e
+      nenhuma dependência do sistema operacional.
+   2. a voz do próprio aparelho (Web Speech API), quando as gravações não
+      foram geradas ou não carregaram.
+
+   O segundo caminho existe porque o primeiro é opcional: o app funciona
+   sem nenhum arquivo de áudio no repositório.
    ========================================================= */
 
-const FALAS = {
-  // criação de jogador, conforme a nota
-  fenomeno:  ['Que fenômeno!', 'Craque demais!', 'Que jogador!'],
-  craque:    ['Que craque!', 'Baita reforço!', 'Show de bola!'],
-  reforco:   ['Reforço de peso!', 'Chegou gente boa!', 'Boa contratação!'],
-  elenco:    ['Mais um pro elenco!', 'Bem-vindo ao clube!', 'Tá no grupo!'],
 
-  // escalação
-  completo:  ['Time completo!', 'Escalação definida!', 'Onze em campo!'],
-  tatica:    ['Mudança tática!', 'Time reposicionado!', 'Nova formação!'],
-
-  // troca que melhora o time
-  melhorou:  ['Agora sim, hein!', 'Boa escolha!', 'Assim o time cresce.',
-              'Decisão de técnico!', 'Gostei dessa.', 'Reforçou de verdade!'],
-
-  // troca que piora — provoca, sem ofender
-  piorou:    ['Tem certeza?', 'Pensa bem, hein.', 'Esse aí é melhor?',
-              'A torcida não vai gostar.', 'Coragem, hein!', 'Olha o que você tá fazendo!'],
-
-  // jogador fora da posição natural
-  improviso: ['Improvisou, hein.', 'Ele joga aí mesmo?', 'Vai ter que se virar.'],
-
-  // goleiro na linha ou jogador de linha no gol
-  golForaDeCasa: ['Goleiro na linha? Ousado!', 'Isso vai dar história.',
-                  'No gol, com as mãos, era melhor.'],
-
-  // tirado de campo, mas segue no elenco
-  tirou:     ['Vai pro banco.', 'Saiu do time.', 'Fora da escalação.'],
-
-  // jogador excluído do elenco
-  dispensa:  ['Dispensado!', 'Fim de contrato.', 'Saiu do clube.'],
-};
 
 const sortear = (lista) => lista[Math.floor(Math.random() * lista.length)];
 
@@ -331,6 +308,10 @@ class Narrador {
     this.voz = null;
     this.pronta = false;
     this.ultimaFala = 0;
+    this.gravacoes = null;      // frase exata -> nome do arquivo
+    this.tocadores = new Map();
+    this.tocando = null;
+    this._carregarGravacoes();
     if ('speechSynthesis' in window) {
       this._escolherVoz();
       // a lista de vozes costuma chegar depois; nem todo navegador expõe
@@ -374,8 +355,21 @@ class Narrador {
     this.pronta = true;
   }
 
+  async _carregarGravacoes() {
+    try {
+      const resposta = await fetch('audio/falas/indice.json');
+      if (!resposta.ok) return;
+      const dados = await resposta.json();
+      if (dados?.frases && Object.keys(dados.frases).length) {
+        this.gravacoes = dados.frases;
+      }
+    } catch {
+      /* sem gravações: a voz do aparelho assume */
+    }
+  }
+
   get disponivel() {
-    return 'speechSynthesis' in window && this.pronta;
+    return !!this.gravacoes || ('speechSynthesis' in window && this.pronta);
   }
 
   // Sorteia a frase sem falar — permite exibir na tela exatamente o que a
@@ -390,13 +384,47 @@ class Narrador {
 
   dizer(texto) {
     if (!this.ligado || !texto) return false;
-    // as vozes podem ter chegado depois da última verificação
-    if (!this.pronta) this._escolherVoz();
-    if (!this.disponivel) return false;
 
     // sem atropelo: uma fala de cada vez, com respiro entre elas
     const agora = Date.now();
     if (agora - this.ultimaFala < 2200) return false;
+
+    if (this._tocarGravacao(texto)) {
+      this.ultimaFala = agora;
+      return true;
+    }
+    return this._falarComOAparelho(texto, agora);
+  }
+
+  // Caminho 1: a gravação pronta. Só falha se o arquivo não existir — frase
+  // nova ainda não gerada, por exemplo —, e aí o aparelho assume.
+  _tocarGravacao(texto) {
+    const nome = this.gravacoes?.[texto] || ARQUIVO_DA_FRASE[texto];
+    if (!this.gravacoes || !nome) return false;
+
+    try {
+      this.calar();
+      let audio = this.tocadores.get(nome);
+      if (!audio) {
+        audio = new Audio(`audio/falas/${nome}.mp3`);
+        audio.preload = 'auto';
+        this.tocadores.set(nome, audio);
+      }
+      audio.currentTime = 0;
+      audio.volume = 0.9;
+      this.tocando = audio;
+      audio.play()?.catch(() => this._falarComOAparelho(texto, Date.now()));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // Caminho 2: a voz do sistema.
+  _falarComOAparelho(texto, agora) {
+    // as vozes podem ter chegado depois da última verificação
+    if (!this.pronta) this._escolherVoz();
+    if (!('speechSynthesis' in window) || !this.pronta) return false;
     this.ultimaFala = agora;
 
     try {
@@ -418,6 +446,8 @@ class Narrador {
 
   calar() {
     try { speechSynthesis.cancel(); } catch { /* sem suporte */ }
+    try { this.tocando?.pause(); } catch { /* nada tocando */ }
+    this.tocando = null;
   }
 }
 

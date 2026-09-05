@@ -44,7 +44,8 @@ Sem framework, sem build, sem dependências: HTML, CSS e JavaScript com módulos
 | `js/app.js` | Estado, renderização, arrastar e soltar, animações |
 | `js/taticas.js` | As 19 táticas e suas coordenadas em campo |
 | `js/db.js` | Persistência em IndexedDB |
-| `js/audio.js` | Trilha sonora e efeitos das ações |
+| `js/audio.js` | Trilha sonora, efeitos das ações e narração |
+| `js/falas.js` | As 42 frases da narração |
 | `js/icones.js` | Ícones em SVG |
 | `sw.js` | Service Worker — cache para funcionar offline |
 
@@ -53,15 +54,40 @@ nenhum: sem contas, sem back-end, sem rastreio.
 
 ## Som
 
-Tudo é sintetizado no navegador, sem nenhum arquivo de áudio:
+Música e efeitos são sintetizados no navegador, sem nenhum arquivo de áudio.
+Só a narração pode ter gravações, e mesmo assim é opcional:
 
 - **Trilha** — loop de quatro compassos (I-V-vi-IV em Lá maior, 108 BPM) com
   bumbo, chimbal, baixo sincopado, arpejo e naipe sustentado.
 - **Efeitos** — todos derivados da mesma escala da trilha, então qualquer
   combinação soa consonante.
-- **Narração** — usa a voz do próprio aparelho (Web Speech API) para comentar
-  os momentos do time. Sem voz instalada no sistema, o app avisa e segue só
-  com música e efeitos.
+- **Narração** — 42 frases para os momentos do time (criou jogador, trocou
+  para melhor, trocou para pior, improvisou na posição, mudou a tática,
+  dispensou). Ela toca por dois caminhos, nesta ordem:
+
+  1. as gravações de `audio/falas/`, se existirem — mesmo timbre em qualquer
+     aparelho, sem depender do sistema operacional;
+  2. a voz do próprio aparelho (Web Speech API). Sem voz instalada no
+     sistema, o app avisa e segue só com música e efeitos.
+
+### Gerando as gravações
+
+As frases moram em `js/falas.js`, que é a fonte única: o texto que aparece
+na tela e o que a voz diz saem da mesma lista.
+
+```bash
+export ELEVENLABS_API_KEY='sua-chave'
+python3 ferramentas/gerar-vozes.py --vozes        # escolhe a voz
+python3 ferramentas/gerar-vozes.py --voz <id>     # gera audio/falas/
+```
+
+São ~700 caracteres no total, bem dentro da cota gratuita mensal do
+ElevenLabs. O script pula o que já existe (use `--refazer` para regerar),
+corta o silêncio das pontas e nivela o volume entre as frases.
+
+**Licença:** áudio gerado no plano gratuito do ElevenLabs vem com restrição
+de uso comercial e pedido de atribuição. Confira os termos do seu plano
+antes de publicar as gravações.
 
 Um botão no topo silencia tudo de uma vez.
 

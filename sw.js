@@ -1,4 +1,4 @@
-const CACHE_NAME = 'notatiko-v13';
+const CACHE_NAME = 'notatiko-v14';
 const ARQUIVOS_ESSENCIAIS = [
   './',
   './index.html',
@@ -7,6 +7,7 @@ const ARQUIVOS_ESSENCIAIS = [
   './js/app.js',
   './js/db.js',
   './js/audio.js',
+  './js/falas.js',
   './js/icones.js',
   './js/taticas.js',
   './icons/icon-192.png',
@@ -14,10 +15,30 @@ const ARQUIVOS_ESSENCIAIS = [
   './icons/icon-maskable-512.png',
 ];
 
+// As gravações da narração são opcionais: se ainda não foram geradas, o app
+// cai na voz do próprio aparelho. Por isso elas entram num addAll separado,
+// que pode falhar sem derrubar a instalação do que é essencial.
+async function guardarNarracao(cache) {
+  try {
+    const resposta = await fetch('./audio/falas/indice.json', { cache: 'reload' });
+    if (!resposta.ok) return;
+    const { frases } = await resposta.json();
+    const arquivos = [...new Set(Object.values(frases || {}))]
+      .map((nome) => `./audio/falas/${nome}.mp3`);
+    await cache.put('./audio/falas/indice.json', resposta.clone());
+    await Promise.all(arquivos.map((a) => cache.add(a).catch(() => {})));
+  } catch {
+    /* sem gravações: segue com a voz do aparelho */
+  }
+}
+
 self.addEventListener('install', (evento) => {
   evento.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(ARQUIVOS_ESSENCIAIS))
+      .then(async (cache) => {
+        await cache.addAll(ARQUIVOS_ESSENCIAIS);
+        await guardarNarracao(cache);
+      })
       .then(() => self.skipWaiting())
   );
 });
