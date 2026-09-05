@@ -1,5 +1,5 @@
 import { DB } from './db.js';
-import { trilha, efeitos, trilhaSintetica, narrador } from './audio.js';
+import { efeitos, trilhaSintetica, narrador } from './audio.js';
 import { ic } from './icones.js';
 import { TATICAS, TATICA_PADRAO, slotsDaTatica } from './taticas.js';
 
@@ -387,7 +387,7 @@ function renderTopo() {
 
   const btnSom = $('#btn-som');
   btnSom.innerHTML = estado.somLigado ? ic.som : ic.semSom;
-  btnSom.classList.toggle('ativo', estado.somLigado && (trilha.tocando || trilhaSintetica.tocando));
+  btnSom.classList.toggle('ativo', estado.somLigado && trilhaSintetica.tocando);
   btnSom.setAttribute('aria-label', estado.somLigado ? 'Desligar trilha sonora' : 'Ligar trilha sonora');
 }
 
@@ -1450,17 +1450,13 @@ async function ligarSom(ligar) {
   if (!ligar) narrador.calar();
   gravarPref('som', ligar);
   if (ligar) {
-    // sem faixa própria, a trilha sintetizada assume
-    const ok = trilha.disponivel ? await trilha.tocar() : false;
-    if (!ok && trilha.disponivel) toast('Toque em qualquer lugar para liberar o som');
-    if (!trilha.disponivel) trilhaSintetica.tocar();
+    trilhaSintetica.tocar();
     // narração depende de voz instalada no sistema: avisa em vez de ficar mudo
     if (!narrador.disponivel && !avisouNarracao) {
       avisouNarracao = true;
       setTimeout(() => toast('Sem voz instalada neste aparelho: só música e efeitos'), 900);
     }
   } else {
-    trilha.parar();
     trilhaSintetica.parar();
   }
   renderTopo();
@@ -1468,16 +1464,12 @@ async function ligarSom(ligar) {
 
 // Navegadores exigem um gesto do usuário antes de tocar áudio.
 function prepararDesbloqueioDeAudio() {
-  trilha.aoIndisponivel = renderTopo;
-  const desbloquear = async () => {
+  const desbloquear = () => {
     if (!estado.somLigado) return;
-    if (trilha.disponivel) { if (!trilha.tocando) await trilha.tocar(); }
-    else trilhaSintetica.tocar();
+    trilhaSintetica.tocar();
     renderTopo();
   };
   document.addEventListener('pointerdown', desbloquear, { once: true });
-  trilha.el.addEventListener('play', renderTopo);
-  trilha.el.addEventListener('pause', renderTopo);
 }
 
 /* =========================================================

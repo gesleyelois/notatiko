@@ -4,5 +4,3 @@ Thumbs.db
 node_modules/
 __pycache__/
 
-# trilha sonora fica só na máquina local (direitos autorais)
-audio/

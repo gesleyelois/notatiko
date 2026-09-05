@@ -51,14 +51,19 @@ Sem framework, sem build, sem dependências: HTML, CSS e JavaScript com módulos
 Os dados ficam no próprio aparelho (IndexedDB). Nada é enviado para servidor
 nenhum: sem contas, sem back-end, sem rastreio.
 
-## Trilha sonora
+## Som
 
-O app toca uma faixa em loop, com botão de mudo. O arquivo de áudio **não faz
-parte deste repositório** por questão de direitos autorais — sem ele, o app
-funciona normalmente e o controle de som simplesmente não aparece.
+Tudo é sintetizado no navegador, sem nenhum arquivo de áudio:
 
-Para ter trilha, coloque um arquivo que você tenha direito de usar em
-`audio/funkdobombapatch.mp3`, ou ajuste o caminho em `js/audio.js`.
+- **Trilha** — loop de quatro compassos (I-V-vi-IV em Lá maior, 108 BPM) com
+  bumbo, chimbal, baixo sincopado, arpejo e naipe sustentado.
+- **Efeitos** — todos derivados da mesma escala da trilha, então qualquer
+  combinação soa consonante.
+- **Narração** — usa a voz do próprio aparelho (Web Speech API) para comentar
+  os momentos do time. Sem voz instalada no sistema, o app avisa e segue só
+  com música e efeitos.
+
+Um botão no topo silencia tudo de uma vez.
 
 ## Instalando como app
 
