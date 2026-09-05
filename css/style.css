@@ -169,9 +169,10 @@ svg { display: block; width: 100%; height: 100%; }
   padding: 9px 12px 8px;
   flex-shrink: 0;
 }
+.barra-tatica .metrica:first-of-type { margin-left: auto; }
 
 .btn-tatica {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   display: flex;
   align-items: center;
@@ -1683,4 +1684,155 @@ input[type=range]::-moz-range-thumb {
   border-color: transparent;
   color: #04180f;
   box-shadow: 0 5px 16px rgba(0, 232, 132, .32);
+}
+
+/* =========================================================
+   Abas do elenco / comissão
+   ========================================================= */
+
+.abas { display: flex; gap: 4px; }
+.aba {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 20px;
+  font-family: var(--fonte-cond);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--texto-3);
+  transition: color .16s, background .16s;
+}
+.aba .contador { transition: inherit; }
+.aba.ativa { color: var(--texto); background: var(--sup-1); }
+.aba.ativa .contador { border-color: var(--borda-clara); color: var(--texto-2); }
+
+/* =========================================================
+   Credencial da comissão técnica
+   ========================================================= */
+
+.item-comissao { flex-shrink: 0; cursor: pointer; transition: transform .14s; }
+.item-comissao:active { transform: scale(.95); }
+
+.credencial {
+  position: relative;
+  width: 92px;
+  aspect-ratio: 1 / 1.4;
+  border-radius: 12px;
+  padding: 16px 8px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  /* aço escovado: propositalmente sem o brilho colorido das cartas */
+  background:
+    repeating-linear-gradient(118deg, rgba(255,255,255,.05) 0 2px, rgba(0,0,0,.06) 2px 5px),
+    linear-gradient(158deg, #43505f 0%, #29323d 45%, #1a212a 100%);
+  border: 1px solid rgba(255, 255, 255, .16);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, .5);
+  color: var(--texto);
+}
+/* cordão da credencial */
+.credencial-fita {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 34px;
+  height: 8px;
+  border-radius: 0 0 5px 5px;
+  background: linear-gradient(180deg, var(--acento), var(--acento-escuro));
+}
+.credencial-foto {
+  width: 42px;
+  height: 42px;
+  border-radius: 9px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, .3);
+  border: 1px solid rgba(255, 255, 255, .28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.credencial-foto img { width: 100%; height: 100%; object-fit: cover; }
+.credencial-foto svg { width: 55%; height: 55%; opacity: .5; }
+.credencial-nome {
+  font-family: var(--fonte-cond);
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.1;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.credencial-funcao {
+  margin-top: auto;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  text-align: center;
+  line-height: 1.15;
+  color: #04180f;
+  background: linear-gradient(150deg, #6effc0, var(--acento));
+  border-radius: 20px;
+  padding: 3px 7px;
+  max-width: 100%;
+}
+
+.carta-nova.comissao {
+  background: linear-gradient(150deg, rgba(140, 165, 190, .55), rgba(90, 110, 130, .22));
+  filter: drop-shadow(0 4px 12px rgba(120, 150, 180, .22));
+}
+.carta-nova.comissao .carta-nova-interna { background: linear-gradient(160deg, #232c37, #161d25); }
+.carta-nova.comissao .aro { border-color: #9fb3c8; color: #9fb3c8; background: rgba(159, 179, 200, .12); }
+.carta-nova.comissao b { color: #b8c8d8; }
+
+/* palco da credencial no cadastro */
+.palco-credencial {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 22px;
+}
+.palco-credencial::before {
+  content: '';
+  position: absolute;
+  top: -8%;
+  left: 50%;
+  width: 220px;
+  height: 128%;
+  transform: translateX(-50%);
+  background: radial-gradient(closest-side, rgba(150, 180, 210, .2), transparent 72%);
+  pointer-events: none;
+}
+.palco-credencial .credencial { width: 148px; position: relative; z-index: 1; }
+.palco-credencial .credencial-foto { width: 66px; height: 66px; border-radius: 13px; }
+.palco-credencial .credencial-nome { font-size: 17px; }
+.palco-credencial .credencial-funcao { font-size: 11px; padding: 4px 10px; }
+
+/* chips de função */
+.chip-funcao {
+  padding: 10px 13px;
+  border-radius: 10px;
+  background: var(--sup-1);
+  border: 1px solid var(--borda);
+  color: var(--texto-2);
+  font-size: 13px;
+  font-weight: 600;
+  transition: transform .14s, background .16s, color .16s;
+}
+.chip-funcao:active { transform: scale(.95); }
+.chip-funcao.ativa {
+  background: linear-gradient(150deg, #37ffa4, var(--acento));
+  border-color: transparent;
+  color: #04180f;
+  font-weight: 700;
 }

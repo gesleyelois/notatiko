@@ -1,5 +1,5 @@
 import { DB } from './db.js';
-import { trilha, efeitos } from './audio.js';
+import { trilha, efeitos, ambiente } from './audio.js';
 import { ic } from './icones.js';
 import { TATICAS, TATICA_PADRAO, slotsDaTatica } from './taticas.js';
 
@@ -57,6 +57,11 @@ const PERFIS = {
   ATA: { rit: 80, fin: 84, pas: 62, dri: 76, def: 32, fis: 70 },
 };
 
+const FUNCOES = [
+  'Técnico', 'Auxiliar técnico', 'Preparador físico', 'Treinador de goleiros',
+  'Analista de desempenho', 'Médico', 'Massagista',
+];
+
 const ORDEM_GRUPOS = ['gol', 'def', 'mei', 'ata'];
 const SETORES = [
   { chave: 'gol', nome: 'Gol' },
@@ -65,6 +70,8 @@ const SETORES = [
   { chave: 'ata', nome: 'Ataque' },
 ];
 const grupoDe = (sigla) => POSICOES.find((p) => p.sigla === sigla)?.grupo ?? 'mei';
+// GOL, ZAG, LE, LD, VOL, MC, MEI, PE, PD, ATA — a ordem em que POSICOES é declarada
+const ordemPosicao = (sigla) => POSICOES.findIndex((p) => p.sigla === sigla);
 
 /* =========================================================
    Estado
@@ -73,6 +80,8 @@ const grupoDe = (sigla) => POSICOES.find((p) => p.sigla === sigla)?.grupo ?? 'me
 const estado = {
   time: null,
   jogadores: [],
+  comissao: [],
+  aba: 'elenco',
   escalacao: { ...TATICA_PADRAO, slots: {} },
   somLigado: lerPref('som', true),
   // seleção ativa: { tipo: 'slot'|'trilho', slotId?, jogadorId? }
@@ -240,6 +249,19 @@ function cartaHTML(j, detalhada = false, foraDePosicao = false) {
     </div>`;
 }
 
+// Credencial da comissão — retângulo com foto e função, deliberadamente
+// diferente da carta chanfrada dos jogadores.
+function credencialHTML(m) {
+  const foto = m.foto ? `<img src="${m.foto}" alt="">` : ic.pessoa;
+  return `
+    <div class="credencial" data-membro="${m.id}">
+      <span class="credencial-fita"></span>
+      <span class="credencial-foto">${foto}</span>
+      <b class="credencial-nome">${escapar(m.nome)}</b>
+      <span class="credencial-funcao">${escapar(m.funcao)}</span>
+    </div>`;
+}
+
 const cartaVaziaHTML = () =>
   `<div class="carta vazia"><span class="carta-vazia-interna"><span>${ic.mais}</span></span></div>`;
 
@@ -368,9 +390,8 @@ function renderTopo() {
     : 'Toque para dar nome e escudo';
 
   const btnSom = $('#btn-som');
-  btnSom.style.display = trilha.disponivel ? '' : 'none';
   btnSom.innerHTML = estado.somLigado ? ic.som : ic.semSom;
-  btnSom.classList.toggle('ativo', estado.somLigado && trilha.tocando);
+  btnSom.classList.toggle('ativo', estado.somLigado && (trilha.tocando || ambiente.tocando));
   btnSom.setAttribute('aria-label', estado.somLigado ? 'Desligar trilha sonora' : 'Ligar trilha sonora');
 }
 
@@ -500,6 +521,7 @@ async function aoTocarSlot(slot) {
 
   if (!j && !estado.jogadores.length) return toast('Crie um jogador antes de escalar');
   estado.selecao = { tipo: 'slot', slotId: slot.id, jogadorId: j?.id || null };
+  efeitos.tocar('toque');
   renderCampo();
   renderElenco();
 }
@@ -516,6 +538,7 @@ async function aoTocarTrilho(j) {
   if (sel?.tipo === 'trilho' && sel.jogadorId === j.id) return limparSelecao();
 
   estado.selecao = { tipo: 'trilho', jogadorId: j.id };
+  efeitos.tocar('toque');
   renderCampo();
   renderElenco();
 }
@@ -551,11 +574,16 @@ function cartaNovoJogador() {
 
 function renderElenco() {
   const trilho = $('#trilho');
-  const escalados = idsEscalados();
-  const sel = estado.selecao;
   $('#qtd-elenco').textContent = estado.jogadores.length;
+  $('#qtd-comissao').textContent = estado.comissao.length;
+  $('#abas').querySelectorAll('.aba').forEach((b) =>
+    b.classList.toggle('ativa', b.dataset.aba === estado.aba));
 
   trilho.innerHTML = '';
+  trilho.classList.toggle('escolhendo', estado.aba === 'elenco' && estado.selecao?.tipo === 'slot');
+
+  if (estado.aba === 'comissao') return renderComissao(trilho);
+
   trilho.appendChild(cartaNovoJogador());
 
   if (!estado.jogadores.length) {
@@ -566,17 +594,13 @@ function renderElenco() {
     return;
   }
 
-  // Disponíveis primeiro (o elenco é a lista de quem pode entrar);
-  // dentro de cada grupo, os melhores na frente.
-  const ordenados = [...estado.jogadores].sort((a, b) => {
-    const emCampoA = escalados.has(a.id) ? 1 : 0;
-    const emCampoB = escalados.has(b.id) ? 1 : 0;
-    if (emCampoA !== emCampoB) return emCampoA - emCampoB;
-    return notaDe(b) - notaDe(a);
-  });
+  const escalados = idsEscalados();
+  const sel = estado.selecao;
 
-  // com uma posição escolhida, o elenco vira a lista de quem pode entrar
-  trilho.classList.toggle('escolhendo', sel?.tipo === 'slot');
+  // Ordem do vestiário: goleiro, defensores, volantes, meias, pontas, atacantes.
+  // Dentro da mesma posição, o de maior nota primeiro.
+  const ordenados = [...estado.jogadores].sort((a, b) =>
+    ordemPosicao(a.posicao) - ordemPosicao(b.posicao) || notaDe(b) - notaDe(a));
 
   for (const j of ordenados) {
     const emCampo = escalados.has(j.id);
@@ -590,17 +614,43 @@ function renderElenco() {
     el.innerHTML = cartaHTML(j) + (selecionado ? acoesCartaTrilhoHTML() : '');
 
     if (emCampo) {
-      // quem já joga se gerencia pela carta em campo, não pela lista
       el.addEventListener('click', () => toast(`${j.apelido} já está em campo`));
     } else {
-      tornarInterativo(el, {
-        tipo: 'trilho',
-        jogadorId: j.id,
-        aoTocar: () => aoTocarTrilho(j),
-      });
+      tornarInterativo(el, { tipo: 'trilho', jogadorId: j.id, aoTocar: () => aoTocarTrilho(j) });
       if (selecionado) ligarAcoesCarta(el, { jogador: j });
     }
 
+    trilho.appendChild(el);
+  }
+}
+
+function renderComissao(trilho) {
+  const novo = document.createElement('button');
+  novo.className = 'carta-nova comissao';
+  novo.innerHTML = `<span class="carta-nova-interna">
+      <span class="aro">${ic.mais}</span>
+      <b>Novo<br>membro</b>
+    </span>`;
+  novo.onclick = () => { limparSelecao(); folhaMembro(null); };
+  trilho.appendChild(novo);
+
+  if (!estado.comissao.length) {
+    const aviso = document.createElement('div');
+    aviso.className = 'trilho-vazio';
+    aviso.innerHTML = 'Sem comissão técnica ainda.<br>Adicione o técnico e a equipe.';
+    trilho.appendChild(aviso);
+    return;
+  }
+
+  const ordem = (m) => {
+    const i = FUNCOES.indexOf(m.funcao);
+    return i < 0 ? FUNCOES.length : i;
+  };
+  for (const m of [...estado.comissao].sort((a, b) => ordem(a) - ordem(b))) {
+    const el = document.createElement('div');
+    el.className = 'item-comissao';
+    el.innerHTML = credencialHTML(m);
+    el.onclick = () => folhaMembro(m);
     trilho.appendChild(el);
   }
 }
@@ -744,6 +794,7 @@ async function tirarDoTime(slotId) {
   await DB.salvarEscalacao(estado.escalacao);
   renderTudo();
   animarTransicao(antes, { apenas: [saindo] });
+  efeitos.tocar('tirar');
 }
 
 async function escalarAutomatico(jogador) {
@@ -786,6 +837,7 @@ async function trocarTatica(formacao, variacao) {
   await DB.salvarEscalacao(estado.escalacao);
   renderTudo();
   animarTransicao(antes);
+  efeitos.tocar('tatica');
 }
 
 /* =========================================================
@@ -801,12 +853,14 @@ function abrirFolha({ titulo, corpo, rodape = '', aoMontar }) {
   $('#folha-rodape').innerHTML = rodape;
   folha.style.transform = '';
   folha.classList.add('aberta');
+  efeitos.tocar('abrir');
   folhaFundo.classList.add('aberta');
   $('#folha-corpo').scrollTop = 0;
   aoMontar?.();
 }
 
 function fecharFolha() {
+  if (folha.classList.contains('aberta')) efeitos.tocar('fechar');
   folha.classList.remove('aberta');
   folhaFundo.classList.remove('aberta');
   folha.style.transform = '';
@@ -877,6 +931,93 @@ function folhaTime() {
         efeitos.tocar('guardar');
         toast('Clube salvo');
       };
+    },
+  });
+}
+
+/* ---------- Comissão técnica ---------- */
+
+function folhaMembro(existente) {
+  const novo = !existente;
+  const base = existente || { nome: '', funcao: FUNCOES[0], foto: '' };
+  let foto = base.foto || '';
+
+  abrirFolha({
+    titulo: novo ? 'Novo membro' : 'Comissão',
+    corpo: `
+      <div class="palco-credencial" id="previa-membro"></div>
+
+      <div class="linha-2" style="align-items:start">
+        <div class="campo">
+          <label>Foto</label>
+          <label class="upload ${foto ? 'tem-img' : ''}" id="up-foto-membro" style="height:112px;min-height:0">
+            ${foto ? `<img src="${foto}" alt="">` : `${ic.camera}<span>Enviar</span>`}
+            <input type="file" accept="image/*" id="in-foto-membro">
+          </label>
+        </div>
+        <div class="campo">
+          <label>Nome</label>
+          <input class="entrada" id="in-nome-membro" maxlength="18"
+                 placeholder="Ex.: Seu Zé" value="${escapar(base.nome)}">
+        </div>
+      </div>
+
+      <div class="campo">
+        <label>Função</label>
+        <div class="chips" id="chips-funcao">
+          ${FUNCOES.map((f) => `
+            <button class="chip-funcao ${f === base.funcao ? 'ativa' : ''}" data-funcao="${f}">${f}</button>`).join('')}
+        </div>
+      </div>`,
+    rodape: `
+      ${novo ? '' : `<button class="btn btn-perigo" id="excluir-membro">${ic.lixeira}</button>`}
+      <button class="btn btn-acento" id="salvar-membro">Salvar membro</button>`,
+    aoMontar: () => {
+      const lerFormulario = () => ({
+        nome: $('#in-nome-membro').value.trim() || 'Sem nome',
+        funcao: $('#chips-funcao .ativa').dataset.funcao,
+        foto,
+      });
+      const atualizar = () => { $('#previa-membro').innerHTML = credencialHTML(lerFormulario()); };
+      atualizar();
+
+      $('#in-nome-membro').addEventListener('input', atualizar);
+      $('#chips-funcao').addEventListener('click', (e) => {
+        const chip = e.target.closest('.chip-funcao');
+        if (!chip) return;
+        $('#chips-funcao .ativa')?.classList.remove('ativa');
+        chip.classList.add('ativa');
+        efeitos.tocar('toque');
+        atualizar();
+      });
+      ligarUpload('#in-foto-membro', '#up-foto-membro', 420, (d) => { foto = d; atualizar(); });
+
+      $('#salvar-membro').onclick = async () => {
+        if (!$('#in-nome-membro').value.trim()) return toast('O membro precisa de um nome');
+        const registro = { id: existente?.id || uid(), ...lerFormulario() };
+        await DB.salvarMembro(registro);
+        const i = estado.comissao.findIndex((m) => m.id === registro.id);
+        i >= 0 ? estado.comissao[i] = registro : estado.comissao.push(registro);
+        fecharFolha();
+        renderElenco();
+        efeitos.tocar('guardar');
+        toast(novo ? `${registro.nome} entrou na comissão` : `${registro.nome} atualizado`);
+      };
+
+      $('#excluir-membro')?.addEventListener('click', async () => {
+        const ok = await confirmar({
+          titulo: `Excluir ${existente.nome}?`,
+          texto: 'O membro sai da comissão técnica. Não dá para desfazer.',
+          acao: 'Excluir membro',
+        });
+        if (!ok) return;
+        await DB.removerMembro(existente.id);
+        estado.comissao = estado.comissao.filter((m) => m.id !== existente.id);
+        fecharFolha();
+        renderElenco();
+        efeitos.tocar('excluir');
+        toast(`${existente.nome} saiu da comissão`);
+      });
     },
   });
 }
@@ -1191,6 +1332,7 @@ async function excluirJogador(j) {
   await DB.salvarEscalacao(estado.escalacao);
   fecharFolha();
   renderTudo();
+  efeitos.tocar('excluir');
   toast(`${j.apelido} saiu do elenco`);
 }
 
@@ -1261,10 +1403,13 @@ async function ligarSom(ligar) {
   efeitos.ligado = ligar;
   gravarPref('som', ligar);
   if (ligar) {
-    const ok = await trilha.tocar();
+    // sem faixa própria, o ambiente de suspense assume a trilha
+    const ok = trilha.disponivel ? await trilha.tocar() : false;
     if (!ok && trilha.disponivel) toast('Toque em qualquer lugar para liberar o som');
+    if (!trilha.disponivel) ambiente.tocar();
   } else {
     trilha.parar();
+    ambiente.parar();
   }
   renderTopo();
 }
@@ -1273,8 +1418,9 @@ async function ligarSom(ligar) {
 function prepararDesbloqueioDeAudio() {
   trilha.aoIndisponivel = renderTopo;
   const desbloquear = async () => {
-    if (!estado.somLigado || trilha.tocando || !trilha.disponivel) return;
-    await trilha.tocar();
+    if (!estado.somLigado) return;
+    if (trilha.disponivel) { if (!trilha.tocando) await trilha.tocar(); }
+    else ambiente.tocar();
     renderTopo();
   };
   document.addEventListener('pointerdown', desbloquear, { once: true });
@@ -1297,6 +1443,15 @@ $('#trilho').addEventListener('click', (e) => {
   if (!e.target.closest('.item-trilho')) limparSelecao();
 });
 
+$('#abas').addEventListener('click', (e) => {
+  const aba = e.target.closest('.aba');
+  if (!aba || aba.dataset.aba === estado.aba) return;
+  estado.aba = aba.dataset.aba;
+  limparSelecao();
+  efeitos.tocar('toque');
+  renderElenco();
+});
+
 $('#btn-tatica').addEventListener('click', () => { limparSelecao(); folhaTatica(); });
 $('#metrica-forca').addEventListener('click', folhaForca);
 $('#metrica-encaixe').addEventListener('click', folhaSintonia);
@@ -1306,9 +1461,10 @@ $('#metrica-encaixe').addEventListener('click', folhaSintonia);
    ========================================================= */
 
 async function iniciar() {
-  const [time, jogadores, escalacao] = await Promise.all([
-    DB.obterTime(), DB.listarJogadores(), DB.obterEscalacao(),
+  const [time, jogadores, escalacao, comissao] = await Promise.all([
+    DB.obterTime(), DB.listarJogadores(), DB.obterEscalacao(), DB.listarComissao(),
   ]);
+  estado.comissao = comissao;
 
   efeitos.ligado = estado.somLigado;
   estado.time = time;

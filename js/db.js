@@ -1,6 +1,6 @@
 // Camada de persistência offline usando IndexedDB.
 const DB_NAME = 'meu-time-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 function openDb() {
   return new Promise((resolve, reject) => {
@@ -15,6 +15,9 @@ function openDb() {
       }
       if (!db.objectStoreNames.contains('escalacao')) {
         db.createObjectStore('escalacao', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('comissao')) {
+        db.createObjectStore('comissao', { keyPath: 'id' });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -44,6 +47,21 @@ export const DB = {
     const db = await openDb();
     return new Promise((resolve, reject) => {
       const store = db.transaction('jogadores', 'readonly').objectStore('jogadores');
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+  },
+  async salvarMembro(membro) {
+    return tx('comissao', 'readwrite', (store) => store.put(membro));
+  },
+  async removerMembro(id) {
+    return tx('comissao', 'readwrite', (store) => store.delete(id));
+  },
+  async listarComissao() {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+      const store = db.transaction('comissao', 'readonly').objectStore('comissao');
       const req = store.getAll();
       req.onsuccess = () => resolve(req.result || []);
       req.onerror = () => reject(req.error);
