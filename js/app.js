@@ -765,6 +765,7 @@ function soltar(x, y, dados) {
 
 async function escalar(slotId, jogadorId) {
   const posicoesAntes = capturarCartas();
+  const estavaCompleto = slotsFormacao().every((s) => estado.escalacao.slots[s.id]);
   const slots = estado.escalacao.slots;
   const anterior = slots[slotId] || null;
   const slotDeOrigem = Object.keys(slots).find((s) => slots[s] === jogadorId);
@@ -782,10 +783,35 @@ async function escalar(slotId, jogadorId) {
   animarTransicao(posicoesAntes, { destaque: slotId, apenas: [jogadorId, anterior], troca: !!anterior });
   efeitos.tocar('pouso');
 
-  // marca o momento de fechar os onze
-  if (idsEscalados().size === slotsFormacao().length) {
-    setTimeout(() => narrador.falar('completo'), 420);
+  const reacao = reacaoDaEscalacao(slotId, jogadorId, anterior, estavaCompleto);
+  if (reacao) setTimeout(() => narrador.falar(reacao), 420);
+}
+
+// O que comentar depois de escalar alguém. Fechar os onze vem primeiro; depois
+// o julgamento da troca (subiu ou caiu a nota da posição); por último, se o
+// jogador está atuando fora da função dele.
+function reacaoDaEscalacao(slotId, entrandoId, saindoId, estavaCompleto) {
+  // "time completo" é transição, não estado: num time já fechado, quem manda
+  // é o julgamento da troca
+  const completoAgora = slotsFormacao().every((s) => estado.escalacao.slots[s.id]);
+  if (completoAgora && !estavaCompleto) return 'completo';
+
+  const slot = slotsFormacao().find((s) => s.id === slotId);
+  const entrando = jogadorPorId(entrandoId);
+  if (!slot || !entrando) return null;
+
+  const saindo = jogadorPorId(saindoId);
+  if (saindo) {
+    const diferenca = notaNaPosicao(entrando, slot.pos) - notaNaPosicao(saindo, slot.pos);
+    if (diferenca >= 2) return 'melhorou';
+    if (diferenca <= -2) return 'piorou';
+    return null;                       // empate técnico: não vale comentário
   }
+
+  const goleiro = (pos) => pos === 'GOL';
+  if (goleiro(slot.pos) !== goleiro(entrando.posicao)) return 'golForaDeCasa';
+  if (entrando.posicao !== slot.pos) return 'improviso';
+  return null;
 }
 
 async function tirarDoTime(slotId) {
@@ -1335,6 +1361,7 @@ async function excluirJogador(j) {
   fecharFolha();
   renderTudo();
   efeitos.tocar('excluir');
+  setTimeout(() => narrador.falar('dispensa'), 200);
   toast(`${j.apelido} saiu do elenco`);
 }
 

@@ -336,12 +336,33 @@ export const trilhaSintetica = new TrilhaSintetica();
    ========================================================= */
 
 const FALAS = {
+  // criação de jogador, conforme a nota
   fenomeno:  ['Que fenômeno!', 'Craque demais!', 'Que jogador!'],
   craque:    ['Que craque!', 'Baita reforço!', 'Show de bola!'],
   reforco:   ['Reforço de peso!', 'Chegou gente boa!', 'Boa contratação!'],
   elenco:    ['Mais um pro elenco!', 'Bem-vindo ao clube!', 'Tá no grupo!'],
+
+  // escalação
   completo:  ['Time completo!', 'Escalação definida!', 'Onze em campo!'],
   tatica:    ['Mudança tática!', 'Time reposicionado!', 'Nova formação!'],
+
+  // troca que melhora o time
+  melhorou:  ['Agora sim, hein!', 'Boa escolha!', 'Assim o time cresce.',
+              'Decisão de técnico!', 'Gostei dessa.', 'Reforçou de verdade!'],
+
+  // troca que piora — provoca, sem ofender
+  piorou:    ['Tem certeza?', 'Pensa bem, hein.', 'Esse aí é melhor?',
+              'A torcida não vai gostar.', 'Coragem, hein!', 'Olha o que você tá fazendo!'],
+
+  // jogador fora da posição natural
+  improviso: ['Improvisou, hein.', 'Ele joga aí mesmo?', 'Vai ter que se virar.'],
+
+  // goleiro na linha ou jogador de linha no gol
+  golForaDeCasa: ['Goleiro na linha? Ousado!', 'Isso vai dar história.',
+                  'No gol, com as mãos, era melhor.'],
+
+  // jogador excluído do elenco
+  dispensa:  ['Dispensado!', 'Fim de contrato.', 'Saiu do clube.'],
 };
 
 const sortear = (lista) => lista[Math.floor(Math.random() * lista.length)];
@@ -362,12 +383,23 @@ class Narrador {
     const vozes = speechSynthesis.getVoices();
     if (!vozes.length) return;
     const pt = vozes.filter((v) => v.lang?.toLowerCase().startsWith('pt'));
-    // prefere português do Brasil e voz instalada no aparelho (funciona offline)
-    this.voz = pt.find((v) => v.lang.toLowerCase() === 'pt-br' && v.localService)
-      || pt.find((v) => v.lang.toLowerCase() === 'pt-br')
-      || pt[0]
-      || null;
-    this.pronta = !!this.voz;
+    if (!pt.length) { this.voz = null; this.pronta = false; return; }
+
+    // Nomes de voz masculina pt-BR mais comuns entre os sistemas. Não há campo
+    // de gênero na API, então a pista possível é o nome.
+    const masculinos = /daniel|felipe|ricardo|ant[oô]nio|j[uú]lio|heitor|f[aá]bio|marcelo|paulo|thiago|male|masculin/i;
+
+    const nota = (v) => {
+      let n = 0;
+      if (masculinos.test(v.name)) n += 8;          // voz masculina, como pedido
+      if (v.lang.toLowerCase() === 'pt-br') n += 4; // sotaque brasileiro
+      if (v.localService) n += 2;                   // instalada: funciona offline
+      return n;
+    };
+
+    this.voz = [...pt].sort((a, b) => nota(b) - nota(a))[0];
+    this.masculina = masculinos.test(this.voz.name);
+    this.pronta = true;
   }
 
   get disponivel() {
@@ -393,7 +425,7 @@ class Narrador {
       try { if (this.voz) fala.voice = this.voz; } catch { /* usa a padrão */ }
       fala.lang = this.voz?.lang || 'pt-BR';
       fala.rate = 1.12;   // um pouco acelerado, como narração de jogo
-      fala.pitch = 0.9;   // levemente mais grave
+      fala.pitch = this.masculina ? 0.92 : 0.8;   // compensa quando só há voz feminina
       fala.volume = 0.9;
       speechSynthesis.speak(fala);
       return true;
