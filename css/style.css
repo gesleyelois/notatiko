@@ -42,6 +42,8 @@
   --fonte-cond: "Roboto Condensed", "Arial Narrow", "Liberation Sans Narrow", "DejaVu Sans Condensed", var(--fonte);
 
   --topo-h: 60px;
+  --barra-h: 64px;
+  --proporcao-campo: 0.75;
 
   /* ritmo vertical compartilhado entre o botão de tática e os indicadores,
      para as duas linhas de texto alinharem entre as três caixas */
@@ -174,10 +176,14 @@ svg { display: block; width: 100%; height: 100%; }
   display: flex;
   align-items: stretch;
   gap: 6px;
-  /* mesma largura do gramado (definida por JS), para as bordas baterem */
-  width: min(100%, var(--largura-campo, 100%));
+  /* Largura igual à do gramado. Em pé o campo ocupa tudo, então 100% basta.
+     Nas duas colunas o campo é limitado pela altura — e essa altura é
+     conhecida (tela menos topo, barra e respiro), então dá para calcular a
+     largura dele aqui mesmo, sem medir nada em JS. */
+  width: 100%;
+  height: var(--barra-h);
   margin: 0 auto;
-  padding: 9px 0 8px;
+  padding: 0;
   flex-shrink: 0;
 }
 .barra-tatica .metrica:first-of-type { margin-left: auto; }
@@ -309,7 +315,7 @@ svg { display: block; width: 100%; height: 100%; }
 .gramado {
   position: relative;
   height: 100%;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: var(--proporcao-campo);
   max-width: 100%;
   container-type: size;
   border-radius: var(--raio-lg);
@@ -1187,6 +1193,10 @@ input[type=range]::-moz-range-thumb {
    ========================================================= */
 
 @media (min-width: 900px), (orientation: landscape) and (max-height: 640px) {
+  /* 3/4 é a proporção do gramado; 16px é o respiro inferior da coluna */
+  .barra-tatica {
+    max-width: calc((100dvh - var(--topo-h) - var(--barra-h) - 16px) * var(--proporcao-campo));
+  }
   .conteudo { flex-direction: row; gap: 16px; padding: 0 4px; }
   .coluna-campo { flex: 1; padding: 0 0 16px 12px; }
   .coluna-elenco {
@@ -1219,16 +1229,13 @@ input[type=range]::-moz-range-thumb {
 
 /* celular deitado: espaço vertical curto — enxuga o topo e o elenco */
 @media (orientation: landscape) and (max-height: 640px) {
+  :root { --topo-h: 46px; --barra-h: 52px; --proporcao-campo: 0.86; }
   .coluna-elenco { width: 236px; }
-  .topo { height: 46px; }
   .escudo { width: 32px; height: 32px; }
   .time-txt b { font-size: 15px; }
-  .barra-tatica { padding: 5px 12px; }
   .barra-tatica { --valor-tam: 16px; }
   .item-trilho .carta { font-size: 9.5px; }
 
-  /* o campo pode ser um pouco mais largo para as cartas não ficarem minúsculas */
-  .gramado { aspect-ratio: 0.86; }
 
   /* cabeçalho do elenco precisa caber na coluna estreita */
   .elenco-topo { gap: 8px; }
@@ -1870,3 +1877,28 @@ input[type=range]::-moz-range-thumb {
 .trilho-comissao .credencial-funcao { font-size: 7.5px; padding: 2px 5px; }
 .trilho-comissao .carta-nova { width: 74px; font-size: 9px; }
 .trilho-comissao .trilho-vazio { min-height: 92px; font-size: 12px; }
+
+/* =========================================================
+   Retrato: aproveita a largura da tela
+
+   A trava de 3/4 existe por causa do modo deitado, onde o campo viraria uma
+   faixa achatada. Em pé esse risco não existe, então o gramado pode ser mais
+   largo — sobra menos margem e as cartas espalham melhor.
+
+   Atenção: largura do slot e fonte da carta andam juntas (a carta mede
+   7.4em), então os dois fatores precisam manter a proporção 7.4:1.
+   ========================================================= */
+
+/* Em pé o campo preenche a largura: sobra menos margem, as cartas crescem e a
+   barra (também 100%) alinha sem depender de medida nenhuma. A trava de
+   proporção continua valendo em telas baixas, onde o campo viraria uma faixa. */
+@media (orientation: portrait) and (min-height: 600px) {
+  .gramado { aspect-ratio: auto; width: 100%; }
+}
+
+@media (orientation: portrait) {
+
+  .slot { width: min(18.5cqw, 14.2cqh); }
+  .slot .carta { font-size: min(2.5cqw, 1.919cqh, 13px); }
+  .pilula { font-size: min(2.43cqw, 1.84cqh, 11px); }
+}
