@@ -19,38 +19,40 @@
 
 <div class="app">
 
-  <header class="topo">
-    <button class="time-id" id="btn-time" aria-label="Editar time">
-      <span class="escudo" id="topo-escudo"></span>
-      <span class="time-txt">
-        <b id="topo-nome">Meu Time</b>
-        <small id="topo-sub">Toque para configurar</small>
-      </span>
-    </button>
-    <button class="btn-icone" id="btn-som" aria-label="Trilha sonora"></button>
-  </header>
-
   <div class="conteudo">
 
     <section class="coluna-campo">
 
-      <div class="barra-tatica">
-        <button class="btn-tatica" id="btn-tatica">
-          <span class="tatica-txt">
-            <b id="tatica-nome">4-3-3</b>
-            <small id="tatica-variacao">Clássico</small>
+      <!-- Placar do jogo: escudo à esquerda, tática e medalhas à direita.
+           Uma linha só, sem barra e sem divisória: encosta no gramado. -->
+      <div class="hud">
+        <button class="emblema" id="btn-time" aria-label="Time: ver e editar">
+          <span class="emblema-brasao" id="topo-escudo"></span>
+          <span class="emblema-txt">
+            <b id="topo-nome">Meu Time</b>
+            <small id="topo-sub">Toque para configurar</small>
           </span>
-          <span class="seta"></span>
         </button>
 
-        <button class="metrica" id="metrica-forca">
+        <button class="medalha" id="metrica-forca" aria-label="Força do time">
+          <svg viewBox="0 0 40 40" aria-hidden="true">
+            <circle class="medalha-trilho" cx="20" cy="20" r="16" />
+            <circle class="medalha-arco" cx="20" cy="20" r="16" id="arco-forca" />
+          </svg>
           <b id="valor-forca">--</b>
           <span>Força</span>
         </button>
-        <button class="metrica" id="metrica-encaixe">
+
+        <button class="medalha" id="metrica-encaixe" aria-label="Sintonia do time">
+          <svg viewBox="0 0 40 40" aria-hidden="true">
+            <circle class="medalha-trilho" cx="20" cy="20" r="16" />
+            <circle class="medalha-arco" cx="20" cy="20" r="16" id="arco-sintonia" />
+          </svg>
           <b id="valor-encaixe">--</b>
           <span>Sintonia</span>
         </button>
+
+        <button class="btn-som" id="btn-som" aria-label="Trilha sonora"></button>
       </div>
 
       <div class="palco">
@@ -112,6 +114,11 @@
             Comissão <span class="contador" id="qtd-comissao">0</span>
           </button>
         </div>
+
+        <button class="placa-tatica" id="btn-tatica" aria-label="Trocar tática">
+          <b id="tatica-nome">4-3-3</b>
+          <small id="tatica-variacao">Clássico</small>
+        </button>
       </div>
       <div class="trilho" id="trilho" role="tabpanel" aria-labelledby="aba-elenco"></div>
       <div class="trilho trilho-comissao" id="trilho-comissao" role="tabpanel"
@@ -128,7 +135,7 @@
   <div class="folha-alca" id="folha-alca"><span></span></div>
   <header class="folha-topo">
     <h2 id="folha-titulo"></h2>
-    <button class="btn-icone" id="folha-fechar" aria-label="Fechar"></button>
+    <button class="folha-fechar" id="folha-fechar" aria-label="Fechar"></button>
   </header>
   <div class="folha-corpo" id="folha-corpo"></div>
   <footer class="folha-rodape" id="folha-rodape"></footer>

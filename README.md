@@ -9,10 +9,13 @@ do navegador.
 ## O que dá para fazer
 
 - **Criar o clube** — nome e escudo, que aparece no topo do app e pintado no círculo central do gramado.
-- **Criar jogadores** — apelido, foto, posição e seis características (Ritmo, Finalização, Passe, Drible, Defesa, Físico). A carta é montada ao vivo enquanto você ajusta.
+- **Criar jogadores** — a carta *é* o formulário: o apelido se escreve nela, a
+  foto se troca tocando nela, e as seis características (Ritmo, Finalização,
+  Passe, Drible, Defesa, Físico) viram um hexágono que se molda com o dedo.
 - **Escalar** — arraste do elenco para o campo, ou toque no jogador e depois na posição. As cartas voam até o lugar.
 - **19 táticas** — 10 formações com variações (4-4-2 Losango, 4-3-3 Falso 9, 3-5-2 Alas ofensivos…), escolhidas pelo desenho do time.
-- **Força e Sintonia** — dois indicadores que explicam a qualidade do time e o encaixe de cada um na posição.
+- **Força e Sintonia** — duas medalhas no placar, com o arco contando o valor.
+  Toque para ver de onde cada número saiu.
 
 ## Como as notas funcionam
 
@@ -122,3 +125,21 @@ Um botão no topo silencia tudo de uma vez.
 
 Abra no celular e use "Adicionar à tela de início". É um PWA: instala, abre em
 tela cheia e funciona sem internet.
+
+## Testes
+
+```bash
+python3 serve.py
+```
+
+Com o app aberto, no console do navegador:
+
+```js
+const t = await import('./ferramentas/e2e.js'); await t.rodar();
+```
+
+São 14 testes ponta a ponta contra o DOM e o IndexedDB de verdade: fundar o
+clube, criar jogador pela carta, moldar o radar, escalar, trocar de tática,
+sobreviver a uma recarga, o campo ocupar a tela, não sobrar comportamento de
+página web e o cache offline estar completo. Dois deles recarregam a página —
+depois da recarga, continue com `await t.continuar()`.

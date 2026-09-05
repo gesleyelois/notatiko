@@ -224,36 +224,177 @@ function classeNome(apelido = '') {
   return '';
 }
 
-function cartaHTML(j, detalhada = false, foraDePosicao = false) {
+// `editavel` transforma a própria carta no formulário: a foto vira o botão de
+// upload e o nome vira o campo de texto, com a tipografia da carta. Não há
+// rótulo, caixa nem placeholder de formulário em lugar nenhum.
+function cartaHTML(j, detalhada = false, foraDePosicao = false, editavel = false) {
   const nota = notaDe(j);
-  const foto = j.foto
-    ? `<img src="${j.foto}" alt="">`
-    : ic.pessoa;
+  const foto = j.foto ? `<img src="${j.foto}" alt="">` : ic.pessoa;
   const stats = ATRIBUTOS
     .map((a) => `<div><b>${j[a.chave] ?? 50}</b><i>${a.sigla}</i></div>`)
     .join('');
+
+  const areaFoto = editavel
+    ? `<label class="carta-foto editavel" for="in-foto">${foto}<span class="carta-foto-troca">${ic.camera}</span></label>`
+    : `<span class="carta-foto">${foto}</span>`;
+
+  const areaNome = editavel
+    ? `<input class="carta-nome entrada-nome${classeNome(j.apelido)}" id="in-apelido"
+              value="${escapar(j.apelido)}" maxlength="14" enterkeyhint="done"
+              placeholder="SEU CRAQUE" aria-label="Apelido do jogador"
+              autocomplete="off" autocorrect="off" autocapitalize="characters"
+              spellcheck="false" data-1p-ignore data-lpignore="true" data-form-type="other">`
+    : `<div class="carta-nome${classeNome(j.apelido)}">${escapar(j.apelido)}</div>`;
 
   return `
     <div class="carta ${tierDe(nota)}${detalhada ? ' detalhada' : ''}${foraDePosicao ? ' fora-de-posicao' : ''}" data-jogador="${j.id}">
       <div class="carta-corpo">
         <span class="carta-nota"><b>${nota}</b><span>${j.posicao}</span></span>
         ${foraDePosicao ? '<span class="aviso-posicao" title="Fora de posição">!</span>' : ''}
-        <span class="carta-foto">${foto}</span>
+        ${areaFoto}
       </div>
-      <div class="carta-nome${classeNome(j.apelido)}">${escapar(j.apelido)}</div>
+      ${areaNome}
       <div class="carta-stats">${stats}</div>
     </div>`;
 }
 
+
+/* ---------- Radar de características ----------
+
+   Seis sliders empilhados eram a parte mais "formulário" do aplicativo.
+   O hexágono mostra os seis de uma vez, e o formato já diz que tipo de
+   jogador é aquele — dá para esculpir arrastando o dedo em cada ponta.  */
+
+const RADAR = { cx: 110, cy: 100, raio: 70, rotulo: 20 };
+
+const anguloDoEixo = (i) => (-90 + i * 60) * Math.PI / 180;
+
+function pontoDoEixo(i, valor, raio = RADAR.raio) {
+  const a = anguloDoEixo(i);
+  const r = raio * (valor / 99);
+  return [RADAR.cx + r * Math.cos(a), RADAR.cy + r * Math.sin(a)];
+}
+
+function radarHTML(valores) {
+  const anel = (frac) => ATRIBUTOS
+    .map((_, i) => pontoDoEixo(i, 99 * frac).map((n) => n.toFixed(1)).join(','))
+    .join(' ');
+
+  const eixos = ATRIBUTOS.map((_, i) => {
+    const [x, y] = pontoDoEixo(i, 99);
+    return `<line x1="${RADAR.cx}" y1="${RADAR.cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" />`;
+  }).join('');
+
+  const rotulos = ATRIBUTOS.map((a, i) => {
+    const [x, y] = pontoDoEixo(i, 99, RADAR.raio + RADAR.rotulo);
+    return `<g class="radar-rotulo" data-eixo="${i}">
+        <text x="${x.toFixed(1)}" y="${(y - 2).toFixed(1)}" class="radar-sigla">${a.sigla}</text>
+        <text x="${x.toFixed(1)}" y="${(y + 11).toFixed(1)}" class="radar-valor" id="rv-${a.chave}">${valores[a.chave]}</text>
+      </g>`;
+  }).join('');
+
+  const pontas = ATRIBUTOS.map((a, i) => {
+    const [x, y] = pontoDoEixo(i, valores[a.chave]);
+    return `<circle class="radar-ponta" id="rp-${a.chave}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="6" />`;
+  }).join('');
+
+  return `
+    <svg class="radar" id="radar" viewBox="0 0 220 200" role="group" aria-label="Características do jogador">
+      <g class="radar-grade">
+        ${[.25, .5, .75, 1].map((f) => `<polygon points="${anel(f)}" />`).join('')}
+        ${eixos}
+      </g>
+      <polygon class="radar-forma" id="radar-forma" points="${ATRIBUTOS.map((a, i) => pontoDoEixo(i, valores[a.chave]).map((n) => n.toFixed(1)).join(',')).join(' ')}" />
+      ${pontas}
+      ${rotulos}
+    </svg>`;
+}
+
+// Arrastar: o eixo é escolhido no toque e travado até soltar, para não
+// esbarrar no vizinho no meio do movimento.
+function ligarRadar(svg, valores, aoMudar) {
+  let eixo = null;
+
+  const local = (e) => {
+    const r = svg.getBoundingClientRect();
+    return [(e.clientX - r.left) / r.width * 220, (e.clientY - r.top) / r.height * 200];
+  };
+
+  // menor diferença angular absoluta, com a volta tratada: o eixo do dedo
+  const eixoMaisProximo = (x, y) => {
+    const ang = Math.atan2(y - RADAR.cy, x - RADAR.cx);
+    let melhor = 0, menor = Infinity;
+    ATRIBUTOS.forEach((_, i) => {
+      const bruto = ang - anguloDoEixo(i);
+      // envolve para [-π, π): sem isso, 350° e 10° pareceriam distantes
+      const d = Math.abs(((bruto % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
+      if (d < menor) { menor = d; melhor = i; }
+    });
+    return melhor;
+  };
+
+  const aplicar = (x, y) => {
+    const a = ATRIBUTOS[eixo];
+    const dist = Math.hypot(x - RADAR.cx, y - RADAR.cy);
+    const v = Math.max(1, Math.min(99, Math.round(dist / RADAR.raio * 99)));
+    if (valores[a.chave] === v) return;
+    valores[a.chave] = v;
+    aoMudar(a, v);
+  };
+
+  svg.addEventListener('pointerdown', (e) => {
+    const [x, y] = local(e);
+    eixo = eixoMaisProximo(x, y);
+    // a captura é conveniência (segue o dedo para fora do SVG); se o
+    // navegador recusar, o valor ainda tem que ser aplicado
+    try { svg.setPointerCapture(e.pointerId); } catch { /* segue sem captura */ }
+    svg.classList.add('mexendo');
+    aplicar(x, y);
+    e.preventDefault();
+  });
+  svg.addEventListener('pointermove', (e) => {
+    if (eixo === null) return;
+    const [x, y] = local(e);
+    aplicar(x, y);
+  });
+  const soltar = () => { eixo = null; svg.classList.remove('mexendo'); };
+  svg.addEventListener('pointerup', soltar);
+  svg.addEventListener('pointercancel', soltar);
+}
+
+// Redesenha só o que muda no radar, sem recriar o SVG (o arraste não pode
+// perder o elemento debaixo do dedo).
+function pintarRadar(valores) {
+  $('#radar-forma').setAttribute('points',
+    ATRIBUTOS.map((a, i) => pontoDoEixo(i, valores[a.chave]).map((n) => n.toFixed(1)).join(',')).join(' '));
+  for (const [i, a] of ATRIBUTOS.entries()) {
+    const [x, y] = pontoDoEixo(i, valores[a.chave]);
+    const ponta = $('#rp-' + a.chave);
+    ponta.setAttribute('cx', x.toFixed(1));
+    ponta.setAttribute('cy', y.toFixed(1));
+    $('#rv-' + a.chave).textContent = valores[a.chave];
+  }
+}
+
 // Credencial da comissão — retângulo com foto e função, deliberadamente
 // diferente da carta chanfrada dos jogadores.
-function credencialHTML(m) {
+function credencialHTML(m, editavel = false) {
   const foto = m.foto ? `<img src="${m.foto}" alt="">` : ic.pessoa;
+  const areaFoto = editavel
+    ? `<label class="credencial-foto editavel" for="in-foto-membro">${foto}<span class="carta-foto-troca">${ic.camera}</span></label>`
+    : `<span class="credencial-foto">${foto}</span>`;
+  const areaNome = editavel
+    ? `<input class="credencial-nome entrada-nome" id="in-nome-membro" maxlength="18"
+              value="${escapar(m.nome)}" placeholder="NOME" aria-label="Nome do membro"
+              enterkeyhint="done" autocomplete="off" autocorrect="off"
+              autocapitalize="characters" spellcheck="false"
+              data-1p-ignore data-lpignore="true" data-form-type="other">`
+    : `<b class="credencial-nome${classeNome(m.nome)}">${escapar(m.nome)}</b>`;
   return `
     <div class="credencial" data-membro="${m.id}">
       <span class="credencial-fita"></span>
-      <span class="credencial-foto">${foto}</span>
-      <b class="credencial-nome${classeNome(m.nome)}">${escapar(m.nome)}</b>
+      ${areaFoto}
+      ${areaNome}
       <span class="credencial-funcao">${escapar(m.funcao)}</span>
     </div>`;
 }
@@ -380,10 +521,13 @@ function renderTopo() {
   $('#topo-escudo').innerHTML = t?.escudo ? `<img src="${t.escudo}" alt="Escudo">` : ic.escudo;
   $('#topo-nome').textContent = t?.nome || 'Meu Time';
 
+  // sem escudo, o emblema pisca: é ele a porta dos dados do time
+  $('#btn-time').classList.toggle('vazio', !t?.escudo);
+
   const escalados = idsEscalados().size;
   $('#topo-sub').textContent = t
-    ? `${estado.jogadores.length} ${estado.jogadores.length === 1 ? 'jogador' : 'jogadores'} · ${escalados}/11 em campo`
-    : 'Toque para dar nome e escudo';
+    ? `${escalados}/11 em campo`
+    : 'Toque para começar';
 
   const btnSom = $('#btn-som');
   btnSom.innerHTML = estado.somLigado ? ic.som : ic.semSom;
@@ -397,12 +541,17 @@ function renderBarraTatica() {
 
   const escalados = idsEscalados().size;
   const forca = String(notaTime() ?? '--');
-  const sint = escalados ? sintonia() + '%' : '--';
+  const sint = escalados ? String(sintonia()) : '--';   // o anel já diz que é proporção
 
   const elForca = $('#valor-forca');
   const elSintonia = $('#valor-encaixe');
   if (elForca.textContent !== forca) { elForca.textContent = forca; pulsar(elForca); }
   if (elSintonia.textContent !== sint) { elSintonia.textContent = sint; pulsar(elSintonia); }
+
+  // o arco da medalha conta o valor: 0 a 1 da volta
+  const nota = notaTime();
+  $('#arco-forca').style.setProperty('--pct', nota ? (nota / 99).toFixed(3) : 0);
+  $('#arco-sintonia').style.setProperty('--pct', escalados ? (sintonia() / 100).toFixed(3) : 0);
 }
 
 function renderCampo() {
@@ -963,14 +1112,15 @@ function folhaTime() {
           <input type="file" accept="image/*" id="in-escudo">
         </label>
 
-        <input class="entrada entrada-titulo" id="in-nome-time" maxlength="26"
-               placeholder="NOME DO CLUBE" value="${escapar(t.nome)}">
+        <input class="entrada-titulo" id="in-nome-time" maxlength="26"
+               placeholder="NOME DO CLUBE" value="${escapar(t.nome)}"
+               aria-label="Nome do clube" enterkeyhint="done"
+               autocomplete="off" autocorrect="off" autocapitalize="characters"
+               spellcheck="false" data-1p-ignore data-lpignore="true" data-form-type="other">
 
-        <p class="ajuda" style="text-align:center;max-width:280px">
-          O escudo aparece no topo do app e pintado no círculo central do gramado.
-        </p>
+        <p class="ajuda">O escudo vai para o placar e para o círculo central do gramado.</p>
       </div>`,
-    rodape: `<button class="btn btn-acento btn-largo" id="salvar-time">Salvar clube</button>`,
+    rodape: `<button class="btn btn-acento btn-largo" id="salvar-time">${estado.time ? 'Salvar' : 'Fundar o clube'}</button>`,
     aoMontar: () => {
       ligarUpload('#in-escudo', '#up-escudo', 420, (d) => escudo = d);
       $('#salvar-time').onclick = async () => {
@@ -997,43 +1147,37 @@ function folhaMembro(existente) {
   abrirFolha({
     titulo: novo ? 'Novo membro' : 'Comissão',
     corpo: `
+      <input type="file" accept="image/*" id="in-foto-membro" class="oculto-de-verdade">
+
       <div class="palco-credencial" id="previa-membro"></div>
 
-      <div class="linha-2" style="align-items:start">
-        <div class="campo">
-          <label>Foto</label>
-          <label class="upload ${foto ? 'tem-img' : ''}" id="up-foto-membro" style="height:112px;min-height:0">
-            ${foto ? `<img src="${foto}" alt="">` : `${ic.camera}<span>Enviar</span>`}
-            <input type="file" accept="image/*" id="in-foto-membro">
-          </label>
-        </div>
-        <div class="campo">
-          <label>Nome</label>
-          <input class="entrada" id="in-nome-membro" maxlength="18"
-                 placeholder="Ex.: Seu Zé" value="${escapar(base.nome)}">
-        </div>
-      </div>
-
-      <div class="campo">
-        <label>Função</label>
-        <div class="chips" id="chips-funcao">
-          ${FUNCOES.map((f) => `
-            <button class="chip-funcao ${f === base.funcao ? 'ativa' : ''}" data-funcao="${f}">${f}</button>`).join('')}
-        </div>
+      <div class="chips" id="chips-funcao">
+        ${FUNCOES.map((f) => `
+          <button class="chip-funcao ${f === base.funcao ? 'ativa' : ''}" data-funcao="${f}">${f}</button>`).join('')}
       </div>`,
     rodape: `
       ${novo ? '' : `<button class="btn btn-perigo" id="excluir-membro">${ic.lixeira}</button>`}
-      <button class="btn btn-acento" id="salvar-membro">Salvar membro</button>`,
+      <button class="btn btn-acento" id="salvar-membro">${novo ? 'Contratar' : 'Salvar'}</button>`,
     aoMontar: () => {
-      const lerFormulario = () => ({
-        nome: $('#in-nome-membro').value.trim() || 'Sem nome',
+      // o campo de nome mora dentro da credencial, que é o que vamos
+      // desenhar: na primeira passada ele ainda não existe
+      const lerFormulario = ({ cru = false } = {}) => ({
+        nome: ($('#in-nome-membro')?.value ?? base.nome).trim() || (cru ? '' : 'Sem nome'),
         funcao: $('#chips-funcao .ativa').dataset.funcao,
         foto,
       });
-      const atualizar = () => { $('#previa-membro').innerHTML = credencialHTML(lerFormulario()); };
+      // a credencial é o formulário: repintar inteira mataria o foco, então
+      // o nome só troca a classe de tamanho
+      const atualizar = () => {
+        $('#previa-membro').innerHTML = credencialHTML(lerFormulario({ cru: true }), true);
+        $('#in-nome-membro').addEventListener('input', () => {
+          $('#previa-membro .credencial-nome').className =
+            'credencial-nome entrada-nome' + classeNome($('#in-nome-membro').value);
+        });
+      };
       atualizar();
 
-      $('#in-nome-membro').addEventListener('input', atualizar);
+      // nada de repintar a cada tecla: o campo perderia o foco
       $('#chips-funcao').addEventListener('click', (e) => {
         const chip = e.target.closest('.chip-funcao');
         if (!chip) return;
@@ -1042,7 +1186,7 @@ function folhaMembro(existente) {
         efeitos.tocar('toque');
         atualizar();
       });
-      ligarUpload('#in-foto-membro', '#up-foto-membro', 420, (d) => { foto = d; atualizar(); });
+      ligarUpload('#in-foto-membro', null, 420, (d) => { foto = d; atualizar(); });
 
       $('#salvar-membro').onclick = async () => {
         if (!$('#in-nome-membro').value.trim()) return toast('O membro precisa de um nome');
@@ -1238,6 +1382,7 @@ function ligarUpload(seletorInput, seletorCaixa, tamanho, aoTer) {
     if (!file) return;
     const dataUrl = await comprimirImagem(file, tamanho);
     aoTer(dataUrl);
+    if (!seletorCaixa) return;    // quem chama já redesenha a própria área
     const caixa = $(seletorCaixa);
     const input = caixa.querySelector('input');
     const manter = [...caixa.querySelectorAll('[data-manter]')];
@@ -1257,105 +1402,106 @@ function folhaJogador(jogadorExistente, posicaoSugerida) {
     ...PERFIS[posicaoSugerida || 'ATA'],
   };
   let foto = base.foto || '';
+  let posicao = base.posicao;
   let tocouNosAtributos = !novo;
+  const valores = Object.fromEntries(ATRIBUTOS.map((a) => [a.chave, base[a.chave]]));
+
+  const lerFormulario = ({ cru = false } = {}) => ({
+    // cru: o que vai para a carta enquanto se edita (vazio fica vazio, com
+    // marca d'água). Salvo, um nome em branco vira "Sem nome".
+    apelido: ($('#in-apelido')?.value ?? base.apelido).trim() || (cru ? '' : 'Sem nome'),
+    posicao,
+    foto,
+    ...valores,
+  });
 
   abrirFolha({
     titulo: novo ? 'Novo jogador' : 'Editar jogador',
     corpo: `
+      <input type="file" accept="image/*" id="in-foto" class="oculto-de-verdade">
+
       <div class="palco-carta" id="previa"></div>
 
-      <div class="linha-2" style="align-items:start">
-        <div class="campo">
-          <label>Foto</label>
-          <label class="upload ${foto ? 'tem-img' : ''}" id="up-foto" style="height:112px;min-height:0">
-            ${foto ? `<img src="${foto}" alt="">` : `${ic.camera}<span>Enviar</span>`}
-            <input type="file" accept="image/*" id="in-foto">
-          </label>
-        </div>
-        <div class="campo">
-          <label>Apelido</label>
-          <input class="entrada" id="in-apelido" maxlength="14" placeholder="Ex.: Foguinho" value="${escapar(base.apelido)}">
-        </div>
+      <div class="faixa-posicao" id="chips-posicao">
+        ${POSICOES.map((p) => `
+          <button class="chip-pos setor-${p.grupo} ${p.sigla === base.posicao ? 'ativa' : ''}"
+                  data-pos="${p.sigla}" title="${p.nome}">${p.sigla}</button>`).join('')}
       </div>
+      <p class="nome-posicao" id="nome-posicao"></p>
 
-      <div class="campo">
-        <label>Posição</label>
-        <div id="chips-posicao">
-          ${SETORES.map((setor) => `
-            <div class="setor">
-              <span class="setor-nome">${setor.nome}</span>
-              <div class="setor-chips">
-                ${POSICOES.filter((p) => p.grupo === setor.chave).map((p) => `
-                  <button class="chip-pos ${p.sigla === base.posicao ? 'ativa' : ''}"
-                          data-pos="${p.sigla}">${p.sigla}</button>`).join('')}
-              </div>
-            </div>`).join('')}
-        </div>
-        <p class="ajuda" id="nome-posicao"></p>
-      </div>
-
-      <div class="campo">
-        <label>Características</label>
-        ${ATRIBUTOS.map((a) => `
-          <div class="atributo">
-            <div class="atributo-topo"><span>${a.nome}</span><b id="v-${a.chave}">${base[a.chave]}</b></div>
-            <input type="range" min="1" max="99" value="${base[a.chave]}" id="r-${a.chave}" style="--pct:${base[a.chave]}%">
-          </div>`).join('')}
+      <div class="bloco-radar">
+        ${radarHTML(valores)}
+        <p class="dica-radar">Arraste as pontas para moldar o jogador</p>
       </div>`,
     rodape: `
       ${novo ? '' : `<button class="btn btn-perigo" id="excluir-jogador">${ic.lixeira}</button>`}
-      <button class="btn btn-acento" id="salvar-jogador">Salvar jogador</button>`,
+      <button class="btn btn-acento" id="salvar-jogador">${novo ? 'Assinar contrato' : 'Salvar'}</button>`,
     aoMontar: () => {
-      const lerFormulario = () => ({
-        apelido: $('#in-apelido').value.trim() || 'Sem nome',
-        posicao: $('#chips-posicao .ativa').dataset.pos,
-        foto,
-        ...Object.fromEntries(ATRIBUTOS.map((a) => [a.chave, +$('#r-' + a.chave).value])),
-      });
-      const atualizarPrevia = () => { $('#previa').innerHTML = cartaHTML(lerFormulario(), true); };
-      atualizarPrevia();
-
-      $('#in-apelido').addEventListener('input', atualizarPrevia);
-
-      const mostrarNomePosicao = () => {
-        const sigla = $('#chips-posicao .ativa').dataset.pos;
-        $('#nome-posicao').textContent = POSICOES.find((p) => p.sigla === sigla).nome;
+      // A carta é o formulário: redesenhá-la inteira a cada tecla mataria o
+      // foco do campo. Por isso o nome só repinta o que depende dele.
+      const repintarCarta = () => {
+        $('#previa').innerHTML = cartaHTML(lerFormulario({ cru: true }), true, false, true);
+        ligarCamposDaCarta();
       };
-      mostrarNomePosicao();
+
+      // o campo de nome nasce de novo a cada repintura; o de arquivo, não
+      const ligarCamposDaCarta = () => {
+        const campo = $('#in-apelido');
+        campo.addEventListener('input', () => {
+          $('#previa .carta-nome').className =
+            'carta-nome entrada-nome' + classeNome(campo.value);
+        });
+      };
+
+      repintarCarta();
+      ligarUpload('#in-foto', null, 420, (d) => { foto = d; repintarCarta(); });
+
+      const trocarPosicao = (sigla) => {
+        posicao = sigla;
+        $('#chips-posicao .ativa')?.classList.remove('ativa');
+        $(`.chip-pos[data-pos="${sigla}"]`).classList.add('ativa');
+        $('#nome-posicao').textContent = POSICOES.find((p) => p.sigla === sigla).nome;
+        // jogador novo com o radar intocado: o perfil da posição molda a forma
+        if (novo && !tocouNosAtributos) {
+          Object.assign(valores, PERFIS[sigla]);
+          pintarRadar(valores);
+        }
+        atualizarNotaEStats();
+      };
+
+      // muda só a nota, a sigla e os números — o campo de nome não é tocado
+      const atualizarNotaEStats = () => {
+        const dados = lerFormulario();
+        const carta = $('#previa .carta');
+        const nota = notaDe(dados);
+        carta.className = `carta ${tierDe(nota)} detalhada`;
+        carta.querySelector('.carta-nota b').textContent = nota;
+        carta.querySelector('.carta-nota span').textContent = posicao;
+        carta.querySelectorAll('.carta-stats b')
+          .forEach((b, i) => { b.textContent = valores[ATRIBUTOS[i].chave]; });
+      };
 
       $('#chips-posicao').addEventListener('click', (e) => {
         const chip = e.target.closest('.chip-pos');
         if (!chip) return;
-        $('#chips-posicao .ativa')?.classList.remove('ativa');
-        chip.classList.add('ativa');
-        mostrarNomePosicao();
-        // jogador novo e sliders intocados: aplica o perfil da posição
-        if (novo && !tocouNosAtributos) {
-          const perfil = PERFIS[chip.dataset.pos];
-          for (const a of ATRIBUTOS) {
-            const r = $('#r-' + a.chave);
-            r.value = perfil[a.chave];
-            r.style.setProperty('--pct', perfil[a.chave] + '%');
-            $('#v-' + a.chave).textContent = perfil[a.chave];
-          }
-        }
-        atualizarPrevia();
+        efeitos.tocar('toque');
+        trocarPosicao(chip.dataset.pos);
       });
 
-      for (const a of ATRIBUTOS) {
-        $('#r-' + a.chave).addEventListener('input', (e) => {
-          tocouNosAtributos = true;
-          e.target.style.setProperty('--pct', e.target.value + '%');
-          $('#v-' + a.chave).textContent = e.target.value;
-          atualizarPrevia();
-        });
-      }
+      ligarRadar($('#radar'), valores, () => {
+        tocouNosAtributos = true;
+        pintarRadar(valores);
+        atualizarNotaEStats();
+      });
 
-      ligarUpload('#in-foto', '#up-foto', 420, (d) => { foto = d; atualizarPrevia(); });
+      trocarPosicao(base.posicao);   // depois das declarações: const tem zona morta
 
       $('#salvar-jogador').onclick = async () => {
+        if (!$('#in-apelido').value.trim()) {
+          $('#in-apelido').focus();
+          return toast('O jogador precisa de um apelido');
+        }
         const dados = lerFormulario();
-        if (!$('#in-apelido').value.trim()) return toast('O jogador precisa de um apelido');
         const registro = { id: jogadorExistente?.id || uid(), criadoEm: jogadorExistente?.criadoEm || Date.now(), ...dados };
         await DB.salvarJogador(registro);
         const i = estado.jogadores.findIndex((j) => j.id === registro.id);

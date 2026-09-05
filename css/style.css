@@ -41,9 +41,12 @@
   --fonte: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --fonte-cond: "Roboto Condensed", "Arial Narrow", "Liberation Sans Narrow", "DejaVu Sans Condensed", var(--fonte);
 
-  --topo-h: 60px;
-  --barra-h: 64px;
-  --barra-margem: 11px;
+  /* HUD: uma linha só no lugar do antigo header + fileira de tiles */
+  --hud-h: 62px;
+  --hud-invasao: 10px;   /* o quanto o HUD desce por cima do gramado */
+  --brasao: 34px;
+  --medalha: 38px;
+  --nome-time: 17px;
   --proporcao-campo: 0.75;
 
   /* ritmo vertical compartilhado entre o botão de tática e os indicadores,
@@ -107,190 +110,267 @@ svg { display: block; width: 100%; height: 100%; }
   flex-direction: column;
 }
 
-/* ---------------- Topo ---------------- */
+/* =========================================================
+   Tirando o cheiro de navegador
 
-.topo {
-  height: var(--topo-h);
+   O aplicativo tem que se comportar como jogo, não como página: nada de
+   realce azul ao tocar, nada de seleção de texto arrastando, nada de
+   rolagem elástica revelando o fundo do navegador, nada de lupa do iOS.
+   Texto só é selecionável onde se digita.
+   ========================================================= */
+
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+body {
+  user-select: none;
+  -webkit-user-select: none;
+  overscroll-behavior: none;
+  touch-action: manipulation;   /* mata o atraso de 300ms e o duplo-toque-zoom */
+}
+
+input, textarea, [contenteditable] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* o anel de foco padrão é marca de formulário; o do teclado a gente desenha */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* barras de rolagem visíveis são coisa de página */
+.trilho, .folha { scrollbar-width: none; }
+.trilho::-webkit-scrollbar, .folha::-webkit-scrollbar { width: 0; height: 0; }
+
+/* =========================================================
+   HUD — o placar do jogo
+
+   Substitui o antigo header + a fileira de tiles. Uma linha só, sem barra,
+   sem divisória e sem fundo próprio: ela encosta no gramado e o gradiente
+   desce para dentro dele, de modo que placar e campo leiam como uma peça só.
+   ========================================================= */
+
+.hud {
+  position: relative;
+  z-index: 3;
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 12px;
-  background: linear-gradient(180deg, rgba(13, 18, 24, .96), rgba(7, 10, 14, .82));
-  border-bottom: 1px solid var(--borda);
-  backdrop-filter: blur(10px);
+  gap: 8px;
+  height: var(--hud-h);
+  padding: 0 4px;
+  /* o gradiente morre no gramado: nada de linha separando os dois */
+  margin-bottom: calc(var(--hud-invasao) * -1);
+  padding-bottom: var(--hud-invasao);
 }
 
-.time-id {
+/* ---- escudo: é ele que abre os dados do time ---- */
+
+.emblema {
   flex: 1;
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 4px 6px 4px 4px;
-  border-radius: var(--raio-sm);
-  transition: background .15s;
+  gap: 9px;
+  padding: 3px 8px 3px 3px;
+  text-align: left;
+  transition: transform .14s;
 }
-.time-id:active { background: var(--painel-2); }
+.emblema:active { transform: scale(.97); }
 
-.escudo {
-  width: 38px;
-  height: 38px;
+.emblema-brasao {
+  position: relative;
+  width: var(--brasao);
+  height: var(--brasao);
   flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--sup-2);
-  border: 1px solid var(--borda);
-  overflow: hidden;
+  /* escudo de verdade, não um avatar redondo */
+  clip-path: polygon(50% 0, 100% 16%, 100% 62%, 50% 100%, 0 62%, 0 16%);
+  background: linear-gradient(160deg, #2a3542, #141a22);
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--texto-3);
+  overflow: hidden;
 }
-.escudo img { width: 100%; height: 100%; object-fit: cover; }
-.escudo svg { width: 20px; height: 20px; }
+/* aro do escudo, desenhado por fora para não ser cortado pelo clip */
+.emblema-brasao::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(50% 0, 100% 16%, 100% 62%, 50% 100%, 0 62%, 0 16%);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .22);
+  pointer-events: none;
+}
+.emblema-brasao img { width: 100%; height: 100%; object-fit: cover; }
+.emblema-brasao svg { width: 46%; height: 46%; opacity: .75; }
 
-.time-txt { min-width: 0; text-align: left; }
-.time-txt b {
+/* sem escudo definido, o emblema chama: é a porta dos dados do time */
+.emblema.vazio .emblema-brasao {
+  background: linear-gradient(160deg, #10321f, #0a1f14);
+  color: var(--acento);
+  animation: chamar 2.6s ease-in-out infinite;
+}
+@keyframes chamar {
+  0%, 72%, 100% { filter: brightness(1); }
+  84%           { filter: brightness(1.55); }
+}
+
+.emblema-txt { min-width: 0; }
+.emblema-txt b {
   display: block;
   font-family: var(--fonte-cond);
-  font-size: 17px;
+  font-size: var(--nome-time);
+  font-weight: 800;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+  line-height: 1.05;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .6);
+}
+.emblema-txt small {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: var(--texto-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- tática: placa de prancheta, não um select ---- */
+
+.placa-tatica {
+  flex-shrink: 0;
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-width: 62px;
+  padding: 5px 11px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(20, 27, 35, .92), rgba(10, 14, 19, .92));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .10), 0 3px 10px rgba(0, 0, 0, .45);
+  transition: transform .14s;
+}
+.placa-tatica:active { transform: scale(.95); }
+.placa-tatica b {
+  font-family: var(--fonte-cond);
+  font-size: 15px;
   font-weight: 800;
   letter-spacing: .3px;
+  line-height: 1;
+}
+.placa-tatica small {
+  font-size: 7.5px;
+  letter-spacing: .7px;
   text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.15;
-}
-.time-txt small {
-  display: block;
-  font-size: 11px;
   color: var(--texto-3);
+  max-width: 62px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* ---------------- Barra de tática + indicadores ---------------- */
+/* ---- Força e Sintonia: medalhas, com o arco contando o valor ---- */
 
-.barra-tatica {
-  display: flex;
-  align-items: stretch;
-  gap: 8px;
-  /* Largura igual à do gramado. Em pé o campo ocupa tudo, então 100% basta.
-     Nas duas colunas o campo é limitado pela altura — e essa altura é
-     conhecida (tela menos topo, barra e respiro), então dá para calcular a
-     largura dele aqui mesmo, sem medir nada em JS. */
-  width: 100%;
-  height: var(--barra-h);
-  /* respiro acima e abaixo: a barra não deve encostar no topo nem no gramado */
-  margin: var(--barra-margem) auto;
-  padding: 0;
+.medalha {
+  position: relative;
   flex-shrink: 0;
+  width: var(--medalha);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  transition: transform .14s;
 }
-.barra-tatica .metrica:first-of-type { margin-left: auto; }
+.medalha:active { transform: scale(.93); }
 
-.btn-tatica {
-  flex: 0 1 auto;
-  min-width: 0;
+/* o anel é um bloco próprio: o rótulo fica embaixo, fora dele */
+.medalha svg {
+  width: var(--medalha);
+  height: var(--medalha);
+  transform: rotate(-90deg);      /* o arco começa no topo */
+}
+.medalha-trilho {
+  fill: rgba(8, 12, 17, .78);
+  stroke: rgba(255, 255, 255, .10);
+  stroke-width: 3;
+}
+.medalha-arco {
+  fill: none;
+  stroke: var(--cor-arco, var(--ouro));
+  stroke-width: 3;
+  stroke-linecap: round;
+  /* 2πr com r=16 */
+  stroke-dasharray: 100.53;
+  stroke-dashoffset: calc(100.53 - 100.53 * var(--pct, 0));
+  transition: stroke-dashoffset .55s cubic-bezier(.2, .9, .3, 1);
+  filter: drop-shadow(0 0 4px var(--cor-arco, var(--ouro)));
+}
+
+/* o número vive no centro do anel */
+.medalha b {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--medalha);
+  height: var(--medalha);
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border-radius: var(--raio-sm);
-  background: var(--sup-1);
-  border: 1px solid var(--borda);
-  text-align: left;
-  transition: border-color .15s, background .15s;
-}
-.btn-tatica:active { background: var(--painel-3); }
-.tatica-txt {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
   justify-content: center;
-}
-.tatica-txt b {
-  display: block;
   font-family: var(--fonte-cond);
-  font-size: var(--valor-tam);
+  font-size: 15px;
   font-weight: 800;
-  letter-spacing: .4px;
-  line-height: var(--valor-altura);
+  letter-spacing: -.5px;
+  line-height: 1;
+  color: var(--cor-arco, var(--ouro));
+  pointer-events: none;
 }
-.tatica-txt small {
-  display: block;
-  font-size: var(--rotulo-tam);
-  line-height: var(--rotulo-altura);
-  margin-top: var(--rotulo-espaco);
-  text-transform: uppercase;
+.medalha span {
+  font-size: 7px;
+  font-weight: 700;
   letter-spacing: .6px;
+  text-transform: uppercase;
   color: var(--texto-3);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-.btn-tatica .seta {
-  width: 0; height: 0;
-  flex-shrink: 0;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-top: 6px solid var(--texto-3);
-}
+#metrica-forca { --cor-arco: var(--ouro); }
+#metrica-encaixe { --cor-arco: var(--acento); }
 
-.metrica {
-  min-width: 58px;
-  padding: 6px 9px;
-  border-radius: var(--raio-sm);
-  background: var(--sup-1);
-  border: 1px solid var(--borda);
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  transition: border-color .15s;
-}
-.metrica:active { border-color: var(--borda-clara); }
-.metrica b {
-  display: block;
-  font-family: var(--fonte-cond);
-  font-size: var(--valor-tam);
-  font-weight: 800;
-  letter-spacing: -.3px;
-  line-height: var(--valor-altura);
-  color: var(--ouro);
-}
-.metrica span {
-  display: block;
-  font-size: var(--rotulo-tam);
-  line-height: var(--rotulo-altura);
-  margin-top: var(--rotulo-espaco);
-  text-transform: uppercase;
-  letter-spacing: .6px;
-  color: var(--texto-3);
-}
-#metrica-encaixe b { color: var(--acento); }
-.metrica b.pulso { animation: pulso-num .5s cubic-bezier(.2, .9, .3, 1); }
+.medalha b.pulso { animation: pulso-num .5s cubic-bezier(.2, .9, .3, 1); }
 @keyframes pulso-num {
   0%   { transform: scale(1); }
   35%  { transform: scale(1.32); filter: brightness(1.5); }
   100% { transform: scale(1); }
 }
 
-.btn-icone {
-  width: 38px; height: 38px;
+/* ---- som: só o glifo, sem caixa ---- */
+
+.btn-som {
   flex-shrink: 0;
-  border-radius: 10px;
-  background: var(--sup-1);
-  border: 1px solid var(--borda);
-  color: var(--texto-2);
-  display: flex; align-items: center; justify-content: center;
-  transition: transform .12s, color .15s, border-color .15s;
+  width: 30px;
+  height: var(--medalha);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--texto-3);
+  transition: transform .12s, color .15s;
 }
-.btn-icone svg { width: 18px; height: 18px; }
-.btn-icone:active { transform: scale(.92); }
-.btn-icone.ativo { color: var(--acento); border-color: rgba(0, 224, 122, .4); background: var(--acento-suave); }
+.btn-som svg { width: 17px; height: 17px; }
+.btn-som:active { transform: scale(.88); }
+.btn-som.ativo { color: var(--acento); filter: drop-shadow(0 0 5px rgba(0, 224, 122, .5)); }
 
 /* =========================================================
    Campo
@@ -1004,10 +1084,28 @@ svg { display: block; width: 100%; height: 100%; }
   position: relative;
   z-index: 1;
 }
+/* fechar: só o glifo, do tamanho do polegar, sem caixa de botão web */
+.folha-fechar {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--texto-3);
+  transition: transform .12s, color .15s;
+}
+.folha-fechar svg { width: 17px; height: 17px; }
+.folha-fechar:active { transform: scale(.88); color: var(--texto); }
+
 .folha-topo h2 {
   margin: 0;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-family: var(--fonte-cond);
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 800;
   letter-spacing: 1.4px;
   text-transform: uppercase;
@@ -1242,8 +1340,13 @@ input[type=range]::-moz-range-thumb {
 
 @media (min-width: 900px), (orientation: landscape) and (max-height: 640px) {
   /* 3/4 é a proporção do gramado; 16px é o respiro inferior da coluna */
-  .barra-tatica {
-    max-width: calc((100dvh - var(--topo-h) - var(--barra-h) - (var(--barra-margem) * 2) - 16px) * var(--proporcao-campo));
+  .hud {
+    /* o gramado é centralizado no palco: sem o auto, o HUD encostava à
+       esquerda da coluna. E sem o width, a margem auto desliga o stretch do
+       flex e ele encolhe até o conteúdo. */
+    width: 100%;
+    margin-inline: auto;
+    max-width: calc((100dvh - var(--hud-h) + var(--hud-invasao) - 16px) * var(--proporcao-campo));
   }
   .conteudo { flex-direction: row; gap: 16px; padding: 0 4px; }
   .coluna-campo { flex: 1; padding: 0 0 16px 12px; }
@@ -1277,11 +1380,9 @@ input[type=range]::-moz-range-thumb {
 
 /* celular deitado: espaço vertical curto — enxuga o topo e o elenco */
 @media (orientation: landscape) and (max-height: 640px) {
-  :root { --topo-h: 46px; --barra-h: 52px; --barra-margem: 6px; --proporcao-campo: 0.86; }
+  :root { --hud-h: 48px; --hud-invasao: 6px; --brasao: 28px; --medalha: 36px; --nome-time: 14px; --proporcao-campo: 0.86; }
   .coluna-elenco { width: 236px; }
-  .escudo { width: 32px; height: 32px; }
-  .time-txt b { font-size: 15px; }
-  .barra-tatica { --valor-tam: 16px; }
+  .emblema-txt small { display: none; }
   .coluna-elenco { --carta-trilho: 70px; }
 
 
@@ -1550,6 +1651,10 @@ input[type=range]::-moz-range-thumb {
 .troca-escudo svg { width: 17px; height: 17px; }
 
 .entrada-titulo {
+  /* a linha acompanha o nome, não a largura da tela — travessão de ponta a
+     ponta é cara de formulário */
+  width: auto;
+  max-width: 100%;
   text-align: center;
   font-family: var(--fonte-cond);
   font-size: 25px;
@@ -1733,37 +1838,48 @@ input[type=range]::-moz-range-thumb {
 .linha-info b.queda { color: var(--ambar); }
 
 /* =========================================================
-   Escolha de posição — agrupada por setor
+   Escolha de posição — grade compacta, cor por setor
+
+   Antes eram quatro linhas rotuladas que empurravam o radar para fora da
+   tela. A cor já diz o setor, então o rótulo vira redundância.
    ========================================================= */
 
-#chips-posicao { display: flex; flex-direction: column; gap: 12px; }
+.faixa-posicao {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin-top: 2px;
+}
 
-.setor { display: flex; align-items: center; gap: 12px; }
-.setor-nome {
-  width: 74px;
-  flex-shrink: 0;
+.chip-pos {
+  padding: 9px 4px;
+  border-radius: 9px;
+  background: var(--sup-1);
+  box-shadow: inset 0 0 0 1px var(--borda);
+  color: var(--texto-2);
   font-family: var(--fonte-cond);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
-  letter-spacing: 1.1px;
+  letter-spacing: .6px;
+  transition: transform .12s, color .15s, box-shadow .15s, background .15s;
+}
+/* a cor diz o setor sem precisar escrever o nome dele */
+.chip-pos.setor-gol { color: #ffc65c; box-shadow: inset 0 0 0 1px rgba(255, 198, 92, .26); }
+.chip-pos.setor-def { color: #7db6ff; box-shadow: inset 0 0 0 1px rgba(125, 182, 255, .26); }
+.chip-pos.setor-mei { color: #6ce0c0; box-shadow: inset 0 0 0 1px rgba(108, 224, 192, .26); }
+.chip-pos.setor-ata { color: #ff9a76; box-shadow: inset 0 0 0 1px rgba(255, 154, 118, .26); }
+
+.nome-posicao {
+  margin: 9px 0 0;
+  text-align: center;
+  font-family: var(--fonte-cond);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
   text-transform: uppercase;
   color: var(--texto-3);
 }
-.setor-chips { display: flex; flex-wrap: wrap; gap: 7px; flex: 1; }
 
-.chip-pos {
-  min-width: 54px;
-  padding: 11px 12px;
-  border-radius: 10px;
-  background: var(--sup-1);
-  border: 1px solid var(--borda);
-  color: var(--texto-2);
-  font-family: var(--fonte-cond);
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: .8px;
-  transition: transform .14s, background .16s, color .16s, box-shadow .16s;
-}
 .chip-pos:active { transform: scale(.93); }
 .chip-pos.ativa {
   background: linear-gradient(150deg, #37ffa4, var(--acento));
@@ -1956,7 +2072,7 @@ input[type=range]::-moz-range-thumb {
   }
 
   /* barra e cabeçalhos mais justos, para sobrar campo */
-  .barra-tatica { --barra-margem: 8px; --barra-h: 58px; }
+  :root { --hud-h: 58px; }
   .elenco-topo { padding-bottom: 4px; }
   /* altura fixa (carta + respiro + os 4px da barra de rolagem) para que trocar
      de aba não empurre o campo, já que só o elenco costuma transbordar. */
@@ -1969,4 +2085,157 @@ input[type=range]::-moz-range-thumb {
   .slot { width: min(18.5cqw, 14.2cqh); }
   .slot .carta { font-size: min(2.5cqw, 1.919cqh, 13px); }
   .pilula { font-size: min(2.43cqw, 1.84cqh, 11px); }
+}
+
+
+/* =========================================================
+   Ficha do jogador — a carta é o formulário
+
+   Não há rótulo sobre campo, caixa de texto, área tracejada de upload nem
+   slider: a foto e o nome são editados na própria carta, e as seis
+   características viram um hexágono que se molda com o dedo.
+   ========================================================= */
+
+.oculto-de-verdade {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- nome escrito direto na carta ---- */
+
+/* Reseta só o que o navegador põe num input. A tipografia continua vindo
+   de .carta-nome / .credencial-nome — o campo tem que ser indistinguível do
+   texto que ele substitui. */
+.entrada-nome {
+  width: 100%;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
+  text-align: center;
+  color: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.entrada-nome::placeholder { color: currentColor; opacity: .35; }
+.entrada-nome:focus { outline: none; }
+/* o cursor piscando já diz que dá para escrever; o sublinhado reforça */
+.palco-carta .entrada-nome {
+  box-shadow: 0 1px 0 rgba(0, 0, 0, .22);
+  transition: box-shadow .18s;
+}
+.palco-carta .entrada-nome:focus { box-shadow: 0 2px 0 rgba(0, 0, 0, .5); }
+
+/* ---- foto trocada tocando na própria carta ---- */
+
+.carta-foto.editavel { cursor: pointer; position: relative; }
+.carta-foto-troca {
+  position: absolute;
+  right: -2%;
+  bottom: -2%;
+  width: 34%;
+  height: 34%;
+  border-radius: 50%;
+  background: var(--tinta);
+  color: var(--m1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .45);
+}
+.carta-foto-troca svg { width: 58%; height: 58%; }
+
+/* ---- faixa de posições ---- */
+
+.faixa-posicao { margin-top: 4px; }
+
+/* ---- radar ---- */
+
+.bloco-radar { margin-top: 16px; }
+
+.radar {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto;
+  touch-action: none;          /* o arraste é nosso, não da rolagem */
+  overflow: visible;
+}
+
+.radar-grade polygon {
+  fill: none;
+  stroke: rgba(255, 255, 255, .09);
+  stroke-width: 1;
+}
+.radar-grade polygon:last-of-type { stroke: rgba(255, 255, 255, .18); }
+.radar-grade line { stroke: rgba(255, 255, 255, .09); stroke-width: 1; }
+
+.radar-forma {
+  fill: rgba(0, 232, 132, .22);
+  stroke: var(--acento);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  transition: fill .2s;
+}
+.radar.mexendo .radar-forma { fill: rgba(0, 232, 132, .32); }
+
+.radar-ponta {
+  fill: var(--acento);
+  stroke: #04180f;
+  stroke-width: 2;
+  transition: r .15s;
+}
+.radar.mexendo .radar-ponta { r: 7; }
+
+.radar-sigla {
+  fill: var(--texto-3);
+  font-family: var(--fonte-cond);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .8px;
+  text-anchor: middle;
+}
+.radar-valor {
+  fill: var(--texto);
+  font-family: var(--fonte-cond);
+  font-size: 15px;
+  font-weight: 800;
+  text-anchor: middle;
+}
+
+.dica-radar {
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: .3px;
+  color: var(--texto-3);
+}
+
+/* nome escrito na própria credencial */
+.palco-credencial .entrada-nome {
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .18);
+  transition: box-shadow .18s;
+}
+.palco-credencial .entrada-nome:focus { box-shadow: 0 2px 0 var(--acento); }
+.credencial-foto.editavel { cursor: pointer; position: relative; overflow: visible; }
+.credencial-foto.editavel img { border-radius: inherit; }
+.palco-credencial .chips, #chips-funcao { justify-content: center; }
+
+/* a ficha do clube: escudo grande e o nome escrito embaixo, sem rótulo */
+.cena-time { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.cena-time .ajuda { text-align: center; max-width: 280px; margin: 0; }
+
+/* o escudo já tem a insígnia da câmera: o texto vira redundância barulhenta */
+.escudo-grande span { font-size: 11px; letter-spacing: .4px; opacity: .55; }
+
+/* 320px de largura: o nome do clube encolhe para caber inteiro */
+@media (max-width: 340px) {
+  :root { --nome-time: 14px; --brasao: 30px; --medalha: 34px; }
+  .emblema-txt small { font-size: 9px; }
 }
