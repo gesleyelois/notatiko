@@ -1892,10 +1892,50 @@ input[type=range]::-moz-range-thumb {
    ========================================================= */
 
 /* Em pé o campo preenche a largura: sobra menos margem, as cartas crescem e a
-   barra (também 100%) alinha sem depender de medida nenhuma. A trava de
-   proporção continua valendo em telas baixas, onde o campo viraria uma faixa. */
-@media (orientation: portrait) and (min-height: 600px) {
+   barra (também 100%) alinha sem depender de medida nenhuma. Abaixo de 500px de
+   altura em pé (nenhum celular real) a trava de proporção volta, senão o campo
+   viraria uma faixa deitada. */
+@media (orientation: portrait) and (min-height: 500px) {
   .gramado { aspect-ratio: auto; width: 100%; }
+}
+
+/* Em pé o campo é o assunto principal: garante metade da tela para ele e
+   deixa elenco e comissão dividirem o resto, rolando se não couberem.
+   Sem isso as seções de baixo iam comendo o campo conforme foram crescendo. */
+@media (orientation: portrait) {
+  /* o piso é do GRAMADO, não da coluna — a barra não pode comer essa reserva.
+     min-height:auto na coluna faz esse piso virar o limite de encolhimento dela,
+     então quem cede espaço é o elenco, nunca o campo. */
+  .palco { min-height: 46dvh; }
+  .coluna-campo { flex: 1 1 auto; min-height: auto; }
+
+  /* cresce nunca, encolhe sempre: a sobra de tela vai para o campo e o que não
+     couber aqui vira rolagem. */
+  .coluna-elenco {
+    flex: 0 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* a comissão é consulta, não trabalho: entra bem compacta */
+  .secao-comissao { margin-top: 2px; padding-top: 5px; }
+  .secao-comissao .elenco-topo { padding-top: 0; padding-bottom: 2px; }
+  .secao-comissao .elenco-topo h2 { font-size: 10.5px; }
+  .trilho-comissao { min-height: 0; padding: 3px 12px 4px; gap: 7px; }
+  .trilho-comissao .credencial { width: 50px; padding: 9px 4px 6px; gap: 3px; border-radius: 9px; }
+  .trilho-comissao .credencial-fita { width: 22px; height: 5px; }
+  .trilho-comissao .credencial-foto { width: 22px; height: 22px; border-radius: 6px; }
+  .trilho-comissao .credencial-nome { font-size: 8px; }
+  .trilho-comissao .credencial-funcao { font-size: 6px; padding: 1px 3px; }
+  .trilho-comissao .carta-nova { width: 50px; font-size: 6.5px; }
+  .trilho-comissao .trilho-vazio { min-height: 0; font-size: 11px; padding: 8px; }
+
+  /* barra e cabeçalhos mais justos, para sobrar campo */
+  .barra-tatica { --barra-margem: 8px; --barra-h: 58px; }
+  .elenco-topo { padding-bottom: 4px; }
+  .trilho { min-height: 0; padding-top: 2px; }
+  .item-trilho .carta { font-size: 9.5px; }
 }
 
 @media (orientation: portrait) {
