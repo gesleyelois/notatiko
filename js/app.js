@@ -1,5 +1,5 @@
 import { DB } from './db.js';
-import { trilha, efeitos, trilhaSintetica } from './audio.js';
+import { trilha, efeitos, trilhaSintetica, narrador } from './audio.js';
 import { ic } from './icones.js';
 import { TATICAS, TATICA_PADRAO, slotsDaTatica } from './taticas.js';
 
@@ -781,6 +781,11 @@ async function escalar(slotId, jogadorId) {
   renderTudo();
   animarTransicao(posicoesAntes, { destaque: slotId, apenas: [jogadorId, anterior], troca: !!anterior });
   efeitos.tocar('pouso');
+
+  // marca o momento de fechar os onze
+  if (idsEscalados().size === slotsFormacao().length) {
+    setTimeout(() => narrador.falar('completo'), 420);
+  }
 }
 
 async function tirarDoTime(slotId) {
@@ -834,6 +839,7 @@ async function trocarTatica(formacao, variacao) {
   renderTudo();
   animarTransicao(antes);
   efeitos.tocar('tatica');
+  setTimeout(() => narrador.falar('tatica'), 240);
 }
 
 /* =========================================================
@@ -1387,6 +1393,10 @@ function revelarCarta(j) {
     efeitos.tocar('impacto');
     if (nota >= 85) efeitos.tocar('brilho');
     navigator.vibrate?.(25);
+    // a fala entra depois do impacto, para não disputar com ele
+    setTimeout(() => narrador.falar(
+      nota >= 90 ? 'fenomeno' : nota >= 85 ? 'craque' : nota >= 75 ? 'reforco' : 'elenco'
+    ), 260);
   }, 950);
 
   const fechar = () => {
@@ -1408,6 +1418,8 @@ function revelarCarta(j) {
 async function ligarSom(ligar) {
   estado.somLigado = ligar;
   efeitos.ligado = ligar;
+  narrador.ligado = ligar;
+  if (!ligar) narrador.calar();
   gravarPref('som', ligar);
   if (ligar) {
     // sem faixa própria, a trilha sintetizada assume
@@ -1483,6 +1495,7 @@ async function iniciar() {
   estado.comissao = comissao;
 
   efeitos.ligado = estado.somLigado;
+  narrador.ligado = estado.somLigado;
   estado.time = time;
   estado.jogadores = jogadores;
   if (escalacao && TATICAS[escalacao.formacao]) {

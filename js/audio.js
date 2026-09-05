@@ -324,3 +324,87 @@ class TrilhaSintetica {
 }
 
 export const trilhaSintetica = new TrilhaSintetica();
+
+
+/* =========================================================
+   Narração.
+
+   Usa a voz do próprio aparelho (Web Speech API): nada é baixado e nada
+   depende de gravação de terceiros. As frases são vocabulário comum de
+   futebol — de propósito não imitam a voz nem os bordões de locutores
+   reais, que são identidade de pessoas vivas.
+   ========================================================= */
+
+const FALAS = {
+  fenomeno:  ['Que fenômeno!', 'Craque demais!', 'Que jogador!'],
+  craque:    ['Que craque!', 'Baita reforço!', 'Show de bola!'],
+  reforco:   ['Reforço de peso!', 'Chegou gente boa!', 'Boa contratação!'],
+  elenco:    ['Mais um pro elenco!', 'Bem-vindo ao clube!', 'Tá no grupo!'],
+  completo:  ['Time completo!', 'Escalação definida!', 'Onze em campo!'],
+  tatica:    ['Mudança tática!', 'Time reposicionado!', 'Nova formação!'],
+};
+
+const sortear = (lista) => lista[Math.floor(Math.random() * lista.length)];
+
+class Narrador {
+  constructor() {
+    this.ligado = true;
+    this.voz = null;
+    this.pronta = false;
+    this.ultimaFala = 0;
+    if ('speechSynthesis' in window) {
+      this._escolherVoz();
+      speechSynthesis.addEventListener?.('voiceschanged', () => this._escolherVoz());
+    }
+  }
+
+  _escolherVoz() {
+    const vozes = speechSynthesis.getVoices();
+    if (!vozes.length) return;
+    const pt = vozes.filter((v) => v.lang?.toLowerCase().startsWith('pt'));
+    // prefere português do Brasil e voz instalada no aparelho (funciona offline)
+    this.voz = pt.find((v) => v.lang.toLowerCase() === 'pt-br' && v.localService)
+      || pt.find((v) => v.lang.toLowerCase() === 'pt-br')
+      || pt[0]
+      || null;
+    this.pronta = !!this.voz;
+  }
+
+  get disponivel() {
+    return 'speechSynthesis' in window && this.pronta;
+  }
+
+  falar(chave) {
+    if (!this.ligado || !this.disponivel) return false;
+
+    // sem atropelo: uma fala de cada vez, com respiro entre elas
+    const agora = Date.now();
+    if (agora - this.ultimaFala < 2200) return false;
+    this.ultimaFala = agora;
+
+    const texto = sortear(FALAS[chave] || []);
+    if (!texto) return false;
+
+    try {
+      speechSynthesis.cancel();
+      const fala = new SpeechSynthesisUtterance(texto);
+      // se a voz escolhida for recusada, ainda vale falar com a padrão do
+      // idioma — melhor perder o timbre do que perder a narração
+      try { if (this.voz) fala.voice = this.voz; } catch { /* usa a padrão */ }
+      fala.lang = this.voz?.lang || 'pt-BR';
+      fala.rate = 1.12;   // um pouco acelerado, como narração de jogo
+      fala.pitch = 0.9;   // levemente mais grave
+      fala.volume = 0.9;
+      speechSynthesis.speak(fala);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  calar() {
+    try { speechSynthesis.cancel(); } catch { /* sem suporte */ }
+  }
+}
+
+export const narrador = new Narrador();
