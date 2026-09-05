@@ -2,9 +2,9 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "meu-time-pwa",
+      "name": "notatiko",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["/home/gesleyelois/Workspaces/meu-time-pwa/serve.py", "4173"],
+      "runtimeArgs": ["/home/gesleyelois/Workspaces/notatiko/serve.py", "4173"],
       "port": 4173
     }
   ]
