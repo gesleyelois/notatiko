@@ -112,6 +112,16 @@ class Efeitos {
       // brilho da revelação da carta
       this._nota({ de: 520, para: 1560, dur: .5, tipo: 'triangle', vol: .12 });
       this._nota({ de: 780, para: 2340, dur: .45, tipo: 'sine', vol: .07, atraso: .06 });
+    } else if (tipo === 'impacto') {
+      // a carta assentando no fim da revelação: baque + acorde
+      this._nota({ de: 150, para: 52, dur: .3, tipo: 'sine', vol: .34 });
+      this._nota({ de: 440, para: 440, dur: .5, tipo: 'triangle', vol: .1, atraso: .02 });
+      this._nota({ de: 554, para: 554, dur: .5, tipo: 'triangle', vol: .09, atraso: .05 });
+      this._nota({ de: 659, para: 659, dur: .55, tipo: 'triangle', vol: .08, atraso: .08 });
+    } else if (tipo === 'brilho') {
+      // faísca extra para cartas de nota alta
+      this._nota({ de: 1320, para: 1980, dur: .3, tipo: 'sine', vol: .07 });
+      this._nota({ de: 1760, para: 2640, dur: .26, tipo: 'triangle', vol: .05, atraso: .07 });
     } else if (tipo === 'pegar') {
       this._nota({ de: 420, para: 620, dur: .07, tipo: 'triangle', vol: .08 });
     }
@@ -121,16 +131,28 @@ class Efeitos {
 export const efeitos = new Efeitos();
 
 /* =========================================================
-   Ambiente de suspense — pad grave e lento, bem baixo.
-   Sintetizado aqui mesmo: nenhum arquivo, nenhum download.
+   Trilha sintetizada — loop animado, feito com osciladores.
+   Entra quando não há arquivo de música. Nada é baixado.
    ========================================================= */
 
-class Ambiente {
+// I–V–vi–IV em Lá maior: progressão alegre, um compasso para cada acorde.
+const PROGRESSAO = [
+  { baixo: 110.00, acorde: [440.00, 554.37, 659.25] }, // Lá
+  { baixo: 82.41,  acorde: [415.30, 493.88, 659.25] }, // Mi
+  { baixo: 92.50,  acorde: [369.99, 440.00, 554.37] }, // Fá#m
+  { baixo: 73.42,  acorde: [440.00, 587.33, 739.99] }, // Ré
+];
+
+const PASSOS_POR_COMPASSO = 16;
+const BPM = 108;
+
+class TrilhaSintetica {
   constructor() {
     this.ctx = null;
-    this.nos = [];
     this.tocando = false;
-    this.volume = .055;
+    this.volume = .075;
+    this.passo = 0;
+    this.proximoTempo = 0;
     this.timer = null;
   }
 
@@ -141,64 +163,15 @@ class Ambiente {
     if (!this.ctx) this.ctx = new AC();
     if (this.ctx.state === 'suspended') this.ctx.resume();
 
-    const ctx = this.ctx;
-    const mestre = ctx.createGain();
-    mestre.gain.setValueAtTime(0.0001, ctx.currentTime);
-    mestre.gain.exponentialRampToValueAtTime(this.volume, ctx.currentTime + 4);
-    mestre.connect(ctx.destination);
+    this.mestre = this.ctx.createGain();
+    this.mestre.gain.setValueAtTime(0.0001, this.ctx.currentTime);
+    this.mestre.gain.exponentialRampToValueAtTime(this.volume, this.ctx.currentTime + 1.5);
+    this.mestre.connect(this.ctx.destination);
 
-    // filtro que abre e fecha devagar: é o que dá a respiração do suspense
-    const filtro = ctx.createBiquadFilter();
-    filtro.type = 'lowpass';
-    filtro.frequency.value = 320;
-    filtro.Q.value = 6;
-    filtro.connect(mestre);
-
-    const lfo = ctx.createOscillator();
-    const lfoGanho = ctx.createGain();
-    lfo.frequency.value = 0.045;
-    lfoGanho.gain.value = 190;
-    lfo.connect(lfoGanho).connect(filtro.frequency);
-    lfo.start();
-
-    // acorde menor grave, levemente desafinado entre si
-    const pad = ctx.createGain();
-    pad.gain.value = .5;
-    pad.connect(filtro);
-    const vozes = [55, 65.4, 82.4, 110.2];
-    for (const freq of vozes) {
-      const osc = ctx.createOscillator();
-      osc.type = 'sawtooth';
-      osc.frequency.value = freq;
-      osc.detune.value = (Math.random() - .5) * 14;
-      const g = ctx.createGain();
-      g.gain.value = .22;
-      osc.connect(g).connect(pad);
-      osc.start();
-      this.nos.push(osc);
-    }
-
-    this.nos.push(lfo);
-    this.mestre = mestre;
     this.tocando = true;
-
-    // notas altas esparsas, para a tensão não ficar estática
-    const pingar = () => {
-      if (!this.tocando) return;
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      const t = ctx.currentTime;
-      osc.type = 'sine';
-      osc.frequency.value = [523, 587, 698, 784][Math.floor(Math.random() * 4)];
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(.03, t + .8);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 4);
-      osc.connect(g).connect(mestre);
-      osc.start(t);
-      osc.stop(t + 4.2);
-      this.timer = setTimeout(pingar, 9000 + Math.random() * 11000);
-    };
-    this.timer = setTimeout(pingar, 6000);
+    this.passo = 0;
+    this.proximoTempo = this.ctx.currentTime + .06;
+    this._agendar();
   }
 
   parar() {
@@ -206,11 +179,110 @@ class Ambiente {
     this.tocando = false;
     clearTimeout(this.timer);
     const t = this.ctx.currentTime;
-    this.mestre?.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
-    const nos = this.nos;
-    this.nos = [];
-    setTimeout(() => nos.forEach((n) => { try { n.stop(); } catch {} }), 1400);
+    this.mestre?.gain.exponentialRampToValueAtTime(0.0001, t + .5);
+  }
+
+  setVolume(v) {
+    this.volume = v;
+    if (this.tocando) this.mestre?.gain.setTargetAtTime(v, this.ctx.currentTime, .1);
+  }
+
+  // agendamento com folga: garante ritmo firme mesmo se a aba engasgar
+  _agendar() {
+    if (!this.tocando) return;
+    const duracaoPasso = 60 / BPM / 4;
+    while (this.proximoTempo < this.ctx.currentTime + .12) {
+      this._tocarPasso(this.passo % (PASSOS_POR_COMPASSO * 4), this.proximoTempo);
+      this.proximoTempo += duracaoPasso;
+      this.passo++;
+    }
+    this.timer = setTimeout(() => this._agendar(), 30);
+  }
+
+  _tocarPasso(i, t) {
+    const compasso = Math.floor(i / PASSOS_POR_COMPASSO);
+    const passo = i % PASSOS_POR_COMPASSO;
+    const { baixo, acorde } = PROGRESSAO[compasso];
+
+    if ([0, 4, 8, 12].includes(passo)) this._bumbo(t);
+    if (passo % 2 === 1) this._chimbal(t, passo % 4 === 3 ? .05 : .028);
+    if ([0, 3, 6, 8, 11, 14].includes(passo)) this._baixo(t, baixo);
+    // arpejo em colcheias, subindo e descendo pelo acorde
+    if (passo % 2 === 0) {
+      const seq = [0, 1, 2, 1];
+      this._arpejo(t, acorde[seq[(passo / 2) % 4]]);
+    }
+    if (passo === 0) this._naipe(t, acorde);
+  }
+
+  _bumbo(t) {
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.frequency.setValueAtTime(135, t);
+    osc.frequency.exponentialRampToValueAtTime(48, t + .11);
+    g.gain.setValueAtTime(.9, t);
+    g.gain.exponentialRampToValueAtTime(.001, t + .2);
+    osc.connect(g).connect(this.mestre);
+    osc.start(t); osc.stop(t + .22);
+  }
+
+  _chimbal(t, vol) {
+    const tam = this.ctx.sampleRate * .04;
+    const buffer = this.ctx.createBuffer(1, tam, this.ctx.sampleRate);
+    const dados = buffer.getChannelData(0);
+    for (let i = 0; i < tam; i++) dados[i] = (Math.random() * 2 - 1) * (1 - i / tam);
+    const src = this.ctx.createBufferSource();
+    src.buffer = buffer;
+    const filtro = this.ctx.createBiquadFilter();
+    filtro.type = 'highpass';
+    filtro.frequency.value = 8200;
+    const g = this.ctx.createGain();
+    g.gain.value = vol;
+    src.connect(filtro).connect(g).connect(this.mestre);
+    src.start(t);
+  }
+
+  _baixo(t, freq) {
+    const osc = this.ctx.createOscillator();
+    const filtro = this.ctx.createBiquadFilter();
+    const g = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.value = freq;
+    filtro.type = 'lowpass';
+    filtro.frequency.setValueAtTime(900, t);
+    filtro.frequency.exponentialRampToValueAtTime(260, t + .16);
+    g.gain.setValueAtTime(.34, t);
+    g.gain.exponentialRampToValueAtTime(.001, t + .19);
+    osc.connect(filtro).connect(g).connect(this.mestre);
+    osc.start(t); osc.stop(t + .21);
+  }
+
+  _arpejo(t, freq) {
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(.09, t + .01);
+    g.gain.exponentialRampToValueAtTime(.001, t + .17);
+    osc.connect(g).connect(this.mestre);
+    osc.start(t); osc.stop(t + .19);
+  }
+
+  _naipe(t, acorde) {
+    for (const freq of acorde) {
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.value = freq / 2;
+      osc.detune.value = (Math.random() - .5) * 8;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(.035, t + .06);
+      g.gain.exponentialRampToValueAtTime(.001, t + 1.1);
+      osc.connect(g).connect(this.mestre);
+      osc.start(t); osc.stop(t + 1.2);
+    }
   }
 }
 
-export const ambiente = new Ambiente();
+export const trilhaSintetica = new TrilhaSintetica();

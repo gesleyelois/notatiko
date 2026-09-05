@@ -1,5 +1,5 @@
 import { DB } from './db.js';
-import { trilha, efeitos, ambiente } from './audio.js';
+import { trilha, efeitos, trilhaSintetica } from './audio.js';
 import { ic } from './icones.js';
 import { TATICAS, TATICA_PADRAO, slotsDaTatica } from './taticas.js';
 
@@ -391,7 +391,7 @@ function renderTopo() {
 
   const btnSom = $('#btn-som');
   btnSom.innerHTML = estado.somLigado ? ic.som : ic.semSom;
-  btnSom.classList.toggle('ativo', estado.somLigado && (trilha.tocando || ambiente.tocando));
+  btnSom.classList.toggle('ativo', estado.somLigado && (trilha.tocando || trilhaSintetica.tocando));
   btnSom.setAttribute('aria-label', estado.somLigado ? 'Desligar trilha sonora' : 'Ligar trilha sonora');
 }
 
@@ -1385,10 +1385,21 @@ function revelarCarta(j) {
   efeitos.tocar('revelar');
   navigator.vibrate?.([12, 40, 18]);
 
+  // a carta assenta aos 0,95s (junto com a varredura de brilho): é aí que
+  // entra o baque, senão o fim da animação fica mudo
+  const impacto = setTimeout(() => {
+    efeitos.tocar('impacto');
+    if (nota >= 85) efeitos.tocar('brilho');
+    navigator.vibrate?.(25);
+  }, 950);
+
   const fechar = () => {
     camada.classList.remove('aberta');
     camada.removeEventListener('pointerdown', fechar);
     clearTimeout(t);
+    clearTimeout(impacto);
+    // fecha o ciclo: a carta entrando no elenco
+    efeitos.tocar('guardar');
   };
   const t = setTimeout(fechar, 2600);
   camada.addEventListener('pointerdown', fechar);
@@ -1403,13 +1414,13 @@ async function ligarSom(ligar) {
   efeitos.ligado = ligar;
   gravarPref('som', ligar);
   if (ligar) {
-    // sem faixa própria, o ambiente de suspense assume a trilha
+    // sem faixa própria, a trilha sintetizada assume
     const ok = trilha.disponivel ? await trilha.tocar() : false;
     if (!ok && trilha.disponivel) toast('Toque em qualquer lugar para liberar o som');
-    if (!trilha.disponivel) ambiente.tocar();
+    if (!trilha.disponivel) trilhaSintetica.tocar();
   } else {
     trilha.parar();
-    ambiente.parar();
+    trilhaSintetica.parar();
   }
   renderTopo();
 }
@@ -1420,7 +1431,7 @@ function prepararDesbloqueioDeAudio() {
   const desbloquear = async () => {
     if (!estado.somLigado) return;
     if (trilha.disponivel) { if (!trilha.tocando) await trilha.tocar(); }
-    else ambiente.tocar();
+    else trilhaSintetica.tocar();
     renderTopo();
   };
   document.addEventListener('pointerdown', desbloquear, { once: true });
