@@ -1,4 +1,4 @@
-const CACHE_NAME = 'notatiko-v14';
+const CACHE_NAME = 'notatiko-v16';
 const ARQUIVOS_ESSENCIAIS = [
   './',
   './index.html',
@@ -22,10 +22,13 @@ async function guardarNarracao(cache) {
   try {
     const resposta = await fetch('./audio/falas/indice.json', { cache: 'reload' });
     if (!resposta.ok) return;
+    // o clone tem que sair ANTES de ler o corpo: depois de .json() o corpo
+    // está consumido e clonar lança — erro que o catch abaixo engoliria
+    const copia = resposta.clone();
     const { frases } = await resposta.json();
     const arquivos = [...new Set(Object.values(frases || {}))]
       .map((nome) => `./audio/falas/${nome}.mp3`);
-    await cache.put('./audio/falas/indice.json', resposta.clone());
+    await cache.put('./audio/falas/indice.json', copia);
     await Promise.all(arquivos.map((a) => cache.add(a).catch(() => {})));
   } catch {
     /* sem gravações: segue com a voz do aparelho */

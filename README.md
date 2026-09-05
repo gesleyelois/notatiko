@@ -65,10 +65,13 @@ Só a narração pode ter gravações, e mesmo assim é opcional:
   para melhor, trocou para pior, improvisou na posição, mudou a tática,
   dispensou). Ela toca por dois caminhos, nesta ordem:
 
-  1. as gravações de `audio/falas/`, se existirem — mesmo timbre em qualquer
-     aparelho, sem depender do sistema operacional;
-  2. a voz do próprio aparelho (Web Speech API). Sem voz instalada no
-     sistema, o app avisa e segue só com música e efeitos.
+  1. as gravações de `audio/falas/` — 42 arquivos, 342 KB, 41 segundos no
+     total. Mesmo timbre em qualquer aparelho, sem depender do sistema
+     operacional. O Service Worker guarda todas na instalação, então
+     funcionam offline;
+  2. a voz do próprio aparelho (Web Speech API), se as gravações não
+     carregarem. Sem voz instalada no sistema, o app segue só com música e
+     efeitos.
 
 ### Gerando as gravações
 
