@@ -1,4 +1,4 @@
-const CACHE_NAME = 'notatiko-v16';
+const CACHE_NAME = 'notatiko-v17';
 const ARQUIVOS_ESSENCIAIS = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const ARQUIVOS_ESSENCIAIS = [
   './js/falas.js',
   './js/icones.js',
   './js/taticas.js',
+  './audio/trilha.mp3',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',

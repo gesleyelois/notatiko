@@ -127,7 +127,11 @@ export const efeitos = new Efeitos();
 
 /* =========================================================
    Trilha sintetizada — loop animado, feito com osciladores.
-   Entra quando não há arquivo de música. Nada é baixado.
+
+   Hoje ela é a reserva: audio/trilha.mp3 é esta mesma música, renderizada
+   por este mesmo código (ver README). O arquivo existe porque no iOS o
+   Web Audio sai pelo canal da campainha e a chavinha lateral do iPhone o
+   silencia — um <audio> sai pelo canal de mídia e não é afetado.
    ========================================================= */
 
 // I–V–vi–IV em Lá maior: progressão alegre, um compasso para cada acorde.
@@ -280,7 +284,86 @@ class TrilhaSintetica {
   }
 }
 
+// exportada para ferramentas/gerar-trilha.html renderizar o arquivo a partir dela
 export const trilhaSintetica = new TrilhaSintetica();
+
+
+/* =========================================================
+   Trilha do aplicativo.
+
+   Um <audio> em loop com a música já renderizada. Além de soar igual em
+   qualquer aparelho, tocar um <audio> muda a sessão de áudio do iOS para
+   o canal de mídia — o que também faz os efeitos (Web Audio) voltarem a
+   ser ouvidos com a chavinha do iPhone no silencioso.
+
+   Se o arquivo não carregar, cai na versão sintetizada.
+   ========================================================= */
+
+const ARQUIVO_TRILHA = 'audio/trilha.mp3';
+// o arquivo foi normalizado para -1 dBFS; isto devolve o volume de mixagem
+// original (o pico da síntese era 1.81 vezes o ganho mestre de 0.075)
+const VOLUME_TRILHA = 0.15;
+const ENTRADA_MS = 1500;
+
+class Trilha {
+  constructor() {
+    this.volume = VOLUME_TRILHA;
+    this.tocando = false;
+    this.audio = null;
+    this.naReserva = false;
+    this.rampa = null;
+  }
+
+  tocar() {
+    if (this.tocando) return;
+    this.tocando = true;
+
+    if (this.naReserva) return trilhaSintetica.tocar();
+
+    if (!this.audio) {
+      this.audio = new Audio(ARQUIVO_TRILHA);
+      this.audio.loop = true;
+      this.audio.preload = 'auto';
+    }
+    this.audio.volume = 0;
+    this.audio.play()
+      .then(() => this._rampa(this.volume, ENTRADA_MS))
+      .catch(() => {
+        // arquivo ausente ou reprodução recusada: a síntese assume
+        this.naReserva = true;
+        if (this.tocando) trilhaSintetica.tocar();
+      });
+  }
+
+  parar() {
+    if (!this.tocando) return;
+    this.tocando = false;
+    if (this.naReserva) return trilhaSintetica.parar();
+    this._rampa(0, 500, () => this.audio?.pause());
+  }
+
+  setVolume(v) {
+    this.volume = v;
+    if (this.naReserva) return trilhaSintetica.setVolume(v);
+    if (this.tocando) this._rampa(v, 200);
+  }
+
+  // <audio> não tem rampa de ganho como o Web Audio; esta faz na unha
+  _rampa(alvo, ms, aoFim) {
+    clearInterval(this.rampa);
+    const audio = this.audio;
+    if (!audio) return;
+    const inicio = audio.volume;
+    const t0 = performance.now();
+    this.rampa = setInterval(() => {
+      const k = Math.min(1, (performance.now() - t0) / ms);
+      audio.volume = Math.max(0, Math.min(1, inicio + (alvo - inicio) * k));
+      if (k === 1) { clearInterval(this.rampa); aoFim?.(); }
+    }, 40);
+  }
+}
+
+export const trilha = new Trilha();
 
 
 /* =========================================================

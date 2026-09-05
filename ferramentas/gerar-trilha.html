@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>NoTatiko — gerar a trilha</title>
+<style>
+  body { font: 15px/1.6 system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 20px;
+         background: #0d1117; color: #e6edf3; }
+  h1 { font-size: 20px; }
+  button { font: inherit; font-weight: 700; padding: 12px 20px; border: 0; border-radius: 8px;
+           background: #00e884; color: #03170e; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  pre { background: #161b22; padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 13px; }
+  code { background: #161b22; padding: 2px 6px; border-radius: 4px; }
+  .saida { margin-top: 20px; white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<h1>Gerar a trilha sonora</h1>
+
+<p>Renderiza <code>audio/trilha.mp3</code> a partir da mesma classe
+<code>TrilhaSintetica</code> que o aplicativo usa — a música não muda, só deixa
+de ser sintetizada ao vivo. Sirva o projeto (<code>python3 serve.py</code>) e
+abra esta página por <code>http://localhost:4173/ferramentas/gerar-trilha.html</code>.</p>
+
+<button id="gerar">Renderizar e baixar o WAV</button>
+<div class="saida" id="saida"></div>
+
+<p>Depois converta para mp3 — o mp3 mede exatamente igual ao WAV e deixa a menor
+descontinuidade na emenda entre os formatos testados:</p>
+
+<pre>ffmpeg -y -i trilha-bruta.wav -codec:a libmp3lame -b:a 128k -ac 1 audio/trilha.mp3</pre>
+
+<p>Se mexer no volume, ajuste <code>VOLUME_TRILHA</code> em <code>js/audio.js</code>:
+o arquivo sai normalizado em −1 dBFS, e é esse valor que devolve o nível de
+mixagem original.</p>
+
+<script type="module">
+import { trilhaSintetica } from '../js/audio.js';
+
+const BPM = 108, PASSOS_POR_COMPASSO = 16, TAXA = 44100;
+const CAUDA = 2.0;          // sobra para as caudas que passam do fim do loop
+const saida = document.getElementById('saida');
+const diz = (t) => { saida.textContent += t + '\n'; };
+
+document.getElementById('gerar').onclick = async (e) => {
+  e.target.disabled = true;
+  saida.textContent = '';
+
+  const durPasso = 60 / BPM / 4;
+  const L = 64 * durPasso;                 // um loop: 4 compassos
+  const total = 2 * L + CAUDA;
+
+  // Renderiza dois loops seguidos usando as vozes reais da trilha.
+  const off = new OfflineAudioContext(1, Math.ceil(total * TAXA), TAXA);
+  const t = new (trilhaSintetica.constructor)();
+  t.ctx = off;
+  t.mestre = off.createGain();
+  t.mestre.gain.value = 1;                 // escala cheia; o volume fica com o app
+  t.mestre.connect(off.destination);
+  for (let p = 0; p < Math.ceil(total / durPasso); p++) {
+    t._tocarPasso(p % (PASSOS_POR_COMPASSO * 4), p * durPasso);
+  }
+  const src = (await off.startRendering()).getChannelData(0);
+  diz(`renderizado: ${(src.length / TAXA).toFixed(3)}s`);
+
+  // Loop sem emenda: fica com a janela [L, 2L), que já entra com as caudas do
+  // loop anterior, e dobra para o início a cauda que passa de 2L — que é
+  // exatamente o que soaria ali quando o arquivo repetir.
+  const n = Math.round(L * TAXA), iL = n, iFim = iL + n;
+  const out = new Float32Array(n);
+  out.set(src.subarray(iL, iFim));
+  const cauda = Math.min(Math.round(CAUDA * TAXA), src.length - iFim);
+  for (let i = 0; i < cauda; i++) out[i] += src[iFim + i];
+  diz(`loop: ${(n / TAXA).toFixed(4)}s · cauda dobrada: ${(cauda / TAXA).toFixed(2)}s`);
+
+  let pico = 0;
+  for (let i = 0; i < n; i++) pico = Math.max(pico, Math.abs(out[i]));
+  const ganho = 0.89 / pico;               // −1 dBFS de folga, sem recorte
+  for (let i = 0; i < n; i++) out[i] *= ganho;
+  diz(`pico ${pico.toFixed(3)} → 0.890 (ganho ${ganho.toFixed(4)})`);
+  diz(`salto na emenda: ${Math.abs(out[n - 1] - out[0]).toExponential(2)}`);
+
+  // WAV 16 bits mono
+  const wav = new ArrayBuffer(44 + n * 2), dv = new DataView(wav);
+  const txt = (o, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
+  txt(0, 'RIFF'); dv.setUint32(4, 36 + n * 2, true); txt(8, 'WAVEfmt ');
+  dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+  dv.setUint32(24, TAXA, true); dv.setUint32(28, TAXA * 2, true); dv.setUint16(32, 2, true);
+  dv.setUint16(34, 16, true); txt(36, 'data'); dv.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) {
+    dv.setInt16(44 + i * 2, Math.max(-1, Math.min(1, out[i])) * 32767, true);
+  }
+
+  const url = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = 'trilha-bruta.wav'; a.click();
+  URL.revokeObjectURL(url);
+  diz('\nbaixado: trilha-bruta.wav');
+  e.target.disabled = false;
+};
+</script>
+
+</body>
+</html>

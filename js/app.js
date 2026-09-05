@@ -1,5 +1,5 @@
 import { DB } from './db.js';
-import { efeitos, trilhaSintetica, narrador } from './audio.js';
+import { efeitos, trilha, narrador } from './audio.js';
 import { ic } from './icones.js';
 import { TATICAS, TATICA_PADRAO, slotsDaTatica } from './taticas.js';
 
@@ -387,7 +387,7 @@ function renderTopo() {
 
   const btnSom = $('#btn-som');
   btnSom.innerHTML = estado.somLigado ? ic.som : ic.semSom;
-  btnSom.classList.toggle('ativo', estado.somLigado && trilhaSintetica.tocando);
+  btnSom.classList.toggle('ativo', estado.somLigado && trilha.tocando);
   btnSom.setAttribute('aria-label', estado.somLigado ? 'Desligar trilha sonora' : 'Ligar trilha sonora');
 }
 
@@ -1476,14 +1476,14 @@ async function ligarSom(ligar) {
   if (!ligar) narrador.calar();
   gravarPref('som', ligar);
   if (ligar) {
-    trilhaSintetica.tocar();
+    trilha.tocar();
     // narração depende de voz instalada no sistema: avisa em vez de ficar mudo
     if (!narrador.disponivel && !avisouNarracao) {
       avisouNarracao = true;
       setTimeout(() => toast('Sem voz instalada neste aparelho: só música e efeitos'), 900);
     }
   } else {
-    trilhaSintetica.parar();
+    trilha.parar();
   }
   renderTopo();
 }
@@ -1492,7 +1492,7 @@ async function ligarSom(ligar) {
 function prepararDesbloqueioDeAudio() {
   const desbloquear = () => {
     if (!estado.somLigado) return;
-    trilhaSintetica.tocar();
+    trilha.tocar();
     renderTopo();
   };
   document.addEventListener('pointerdown', desbloquear, { once: true });

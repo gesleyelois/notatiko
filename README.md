@@ -45,6 +45,7 @@ Sem framework, sem build, sem dependências: HTML, CSS e JavaScript com módulos
 | `js/taticas.js` | As 19 táticas e suas coordenadas em campo |
 | `js/db.js` | Persistência em IndexedDB |
 | `js/audio.js` | Trilha sonora, efeitos das ações e narração |
+| `audio/trilha.mp3` | O loop da trilha, renderizado da própria síntese |
 | `js/falas.js` | As 42 frases da narração |
 | `js/icones.js` | Ícones em SVG |
 | `sw.js` | Service Worker — cache para funcionar offline |
@@ -54,13 +55,33 @@ nenhum: sem contas, sem back-end, sem rastreio.
 
 ## Som
 
-Música e efeitos são sintetizados no navegador, sem nenhum arquivo de áudio.
-Só a narração pode ter gravações, e mesmo assim é opcional:
+Nada de música de terceiros: tudo é sintetizado pelo próprio código, e o que
+vira arquivo é renderização dessa mesma síntese.
 
 - **Trilha** — loop de quatro compassos (I-V-vi-IV em Lá maior, 108 BPM) com
-  bumbo, chimbal, baixo sincopado, arpejo e naipe sustentado.
-- **Efeitos** — todos derivados da mesma escala da trilha, então qualquer
-  combinação soa consonante.
+  bumbo, chimbal, baixo sincopado, arpejo e naipe sustentado. Toca de
+  `audio/trilha.mp3` (140 KB, 8,9 s em loop), renderizado a partir da classe
+  `TrilhaSintetica`. Se o arquivo não carregar, a síntese ao vivo assume.
+- **Efeitos** — sintetizados ao vivo, todos derivados da mesma escala da
+  trilha, então qualquer combinação soa consonante.
+
+### Por que a trilha é arquivo e os efeitos não
+
+No iOS o Web Audio sai pelo canal da campainha, e a chavinha lateral do iPhone
+o silencia; um `<audio>` sai pelo canal de mídia e não é afetado. Com a trilha
+em `<audio>`, a sessão de áudio do sistema passa a ser a de mídia — o que
+devolve o som dos efeitos junto, sem precisar transformá-los em arquivo.
+
+### Gerando a trilha
+
+Sirva o projeto e abra
+`http://localhost:4173/ferramentas/gerar-trilha.html`. A página renderiza o
+loop com as vozes reais da trilha, monta a emenda sem estalo (dobra para o
+início a cauda que passa do fim), normaliza em −1 dBFS e baixa o WAV:
+
+```bash
+ffmpeg -y -i trilha-bruta.wav -codec:a libmp3lame -b:a 128k -ac 1 audio/trilha.mp3
+```
 - **Narração** — 42 frases para os momentos do time (criou jogador, trocou
   para melhor, trocou para pior, improvisou na posição, mudou a tática,
   dispensou). Ela toca por dois caminhos, nesta ordem:
