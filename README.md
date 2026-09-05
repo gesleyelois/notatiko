@@ -76,10 +76,13 @@ As frases moram em `js/falas.js`, que é a fonte única: o texto que aparece
 na tela e o que a voz diz saem da mesma lista.
 
 ```bash
-export ELEVENLABS_API_KEY='sua-chave'
+printf %s 'sua-chave' > .chave-elevenlabs         # ignorado pelo git
 python3 ferramentas/gerar-vozes.py --vozes        # escolhe a voz
 python3 ferramentas/gerar-vozes.py --voz <id>     # gera audio/falas/
 ```
+
+A chave também pode vir de `ELEVENLABS_API_KEY`, desde que exportada na
+mesma shell que roda o script.
 
 São ~700 caracteres no total, bem dentro da cota gratuita mensal do
 ElevenLabs. O script pula o que já existe (use `--refazer` para regerar),

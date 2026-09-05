@@ -4,10 +4,10 @@
 A lista de frases vem de js/falas.js — a mesma que o aplicativo usa — então
 o texto que aparece na tela e o que a voz diz nunca saem de sincronia.
 
-A chave da API é lida de ELEVENLABS_API_KEY. Ela nunca é impressa, gravada
-em arquivo nem passada por linha de comando.
+A chave da API vem de .chave-elevenlabs (ignorado pelo git) ou da variável
+ELEVENLABS_API_KEY. Ela nunca é impressa nem passada por linha de comando.
 
-    export ELEVENLABS_API_KEY='sua-chave'
+    printf %s 'sua-chave' > .chave-elevenlabs
     python3 ferramentas/gerar-vozes.py --vozes          # lista as vozes da conta
     python3 ferramentas/gerar-vozes.py --voz <id>       # gera tudo
     python3 ferramentas/gerar-vozes.py --voz <id> --so melhorou,piorou
@@ -37,15 +37,35 @@ MODELO = 'eleven_multilingual_v2'
 FORMATO = 'mp3_44100_128'
 
 
+# Onde a chave pode estar, em ordem. O arquivo existe porque cada shell nova
+# não herda um `export` digitado noutro terminal — e ele está no .gitignore.
+ARQUIVOS_DE_CHAVE = [
+    RAIZ / '.chave-elevenlabs',
+    Path.home() / '.config' / 'notatiko' / 'elevenlabs.key',
+]
+
+
 def chave():
     k = os.environ.get('ELEVENLABS_API_KEY', '').strip()
-    if not k:
-        sys.exit(
-            'Falta a chave da API.\n\n'
-            "  export ELEVENLABS_API_KEY='sua-chave'\n\n"
-            'A chave fica no painel do ElevenLabs, em Profile > API Keys.'
-        )
-    return k
+    if k:
+        return k
+
+    for arquivo in ARQUIVOS_DE_CHAVE:
+        try:
+            k = arquivo.read_text(encoding='utf-8').strip()
+        except OSError:
+            continue
+        if k:
+            return k
+
+    sys.exit(
+        'Não achei a chave da API. Duas formas:\n\n'
+        '  1) num arquivo (vale para qualquer terminal, já ignorado pelo git):\n'
+        "     printf %s 'sua-chave' > .chave-elevenlabs\n\n"
+        '  2) ou na variável de ambiente, na mesma shell que roda o script:\n'
+        "     export ELEVENLABS_API_KEY='sua-chave'\n\n"
+        'A chave fica no painel do ElevenLabs, em Profile > API Keys.'
+    )
 
 
 def pedir(caminho, dados=None, chave_api=None, binario=False):

@@ -4,3 +4,6 @@ Thumbs.db
 node_modules/
 __pycache__/
 
+# chave da API do ElevenLabs — nunca versionada
+.chave-elevenlabs
+*.key
