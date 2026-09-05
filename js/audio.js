@@ -395,7 +395,9 @@ class Narrador {
     const pt = vozes.filter((v) => v.lang?.toLowerCase().startsWith('pt'));
     if (!pt.length) { this.voz = null; this.pronta = false; return; }
 
-    // A API não expõe gênero; a pista possível é o nome.
+    // A API não expõe gênero; a pista possível é o nome. Ela ajusta o tom
+    // depois (fala.pitch) e, com peso 1, serve de critério de desempate —
+    // sem competir com "voz base", que vale 4.
     const masculinos = /daniel|felipe|ricardo|ant[oô]nio|antonio|j[uú]lio|heitor|f[aá]bio|marcelo|paulo|thiago|diogo|male\b|masculin/i;
     const femininos = /luciana|maria|fernanda|helena|ines|inês|joana|catarina|female|feminin/i;
 
@@ -405,8 +407,8 @@ class Narrador {
       // No Linux o espeak publica ~100 variantes alteradas do mesmo idioma
       // ("+Adam", "+Demonic"...). A voz base, sem sufixo, é a mais natural.
       if (!v.name.includes('+')) n += 4;
-      if (masculinos.test(v.name)) n += 3;           // voz masculina, como pedido
       if (v.localService) n += 2;                    // instalada: funciona offline
+      if (masculinos.test(v.name)) n += 1;           // só desempata
       return n;
     };
 
