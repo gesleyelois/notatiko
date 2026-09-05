@@ -839,7 +839,8 @@ input, textarea, [contenteditable] {
 .trilho-vazio {
   flex: 1;
   min-height: calc(var(--carta-trilho) * 1.4);
-  border: 1px dashed var(--borda-clara);
+  /* tracejado é vocabulário de área de upload de site */
+  border: 0;
   border-radius: var(--raio);
   display: flex;
   flex-direction: column;
@@ -1199,7 +1200,8 @@ input, textarea, [contenteditable] {
   justify-content: center;
   gap: 6px;
   min-height: 104px;
-  border: 1px dashed var(--borda-clara);
+  /* tracejado é vocabulário de área de upload de site */
+  border: 0;
   border-radius: var(--raio);
   background: var(--painel-2);
   color: var(--texto-3);
@@ -2157,12 +2159,12 @@ input[type=range]::-moz-range-thumb {
 
 /* ---- radar ---- */
 
-.bloco-radar { margin-top: 16px; }
+.bloco-radar { margin-top: 6px; }
 
 .radar {
   display: block;
   width: 100%;
-  max-width: 320px;
+  max-width: 296px;
   margin: 0 auto;
   touch-action: none;          /* o arraste é nosso, não da rolagem */
   overflow: visible;
@@ -2210,7 +2212,7 @@ input[type=range]::-moz-range-thumb {
 }
 
 .dica-radar {
-  margin: 10px 0 0;
+  margin: 2px 0 0;
   text-align: center;
   font-size: 11px;
   letter-spacing: .3px;
