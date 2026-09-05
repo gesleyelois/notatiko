@@ -42,6 +42,14 @@
   --fonte-cond: "Roboto Condensed", "Arial Narrow", "Liberation Sans Narrow", "DejaVu Sans Condensed", var(--fonte);
 
   --topo-h: 60px;
+
+  /* ritmo vertical compartilhado entre o botão de tática e os indicadores,
+     para as duas linhas de texto alinharem entre as três caixas */
+  --valor-tam: 19px;
+  --valor-altura: 1.05;
+  --rotulo-tam: 9px;
+  --rotulo-altura: 1.1;
+  --rotulo-espaco: 3px;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -166,7 +174,10 @@ svg { display: block; width: 100%; height: 100%; }
   display: flex;
   align-items: stretch;
   gap: 6px;
-  padding: 9px 12px 8px;
+  /* mesma largura do gramado (definida por JS), para as bordas baterem */
+  width: min(100%, var(--largura-campo, 100%));
+  margin: 0 auto;
+  padding: 9px 0 8px;
   flex-shrink: 0;
 }
 .barra-tatica .metrica:first-of-type { margin-left: auto; }
@@ -185,18 +196,28 @@ svg { display: block; width: 100%; height: 100%; }
   transition: border-color .15s, background .15s;
 }
 .btn-tatica:active { background: var(--painel-3); }
-.tatica-txt { flex: 1; min-width: 0; }
+.tatica-txt {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
 .tatica-txt b {
   display: block;
   font-family: var(--fonte-cond);
-  font-size: 17px;
+  font-size: var(--valor-tam);
   font-weight: 800;
-  letter-spacing: .6px;
-  line-height: 1.1;
+  letter-spacing: .4px;
+  line-height: var(--valor-altura);
 }
 .tatica-txt small {
   display: block;
-  font-size: 11px;
+  font-size: var(--rotulo-tam);
+  line-height: var(--rotulo-altura);
+  margin-top: var(--rotulo-espaco);
+  text-transform: uppercase;
+  letter-spacing: .6px;
   color: var(--texto-3);
   white-space: nowrap;
   overflow: hidden;
@@ -212,24 +233,35 @@ svg { display: block; width: 100%; height: 100%; }
 
 .metrica {
   min-width: 58px;
-  padding: 5px 9px;
+  padding: 6px 9px;
   border-radius: var(--raio-sm);
   background: var(--sup-1);
   border: 1px solid var(--borda);
   text-align: center;
-  line-height: 1.05;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   transition: border-color .15s;
 }
 .metrica:active { border-color: var(--borda-clara); }
 .metrica b {
   display: block;
   font-family: var(--fonte-cond);
-  font-size: 20px;
+  font-size: var(--valor-tam);
   font-weight: 800;
   letter-spacing: -.3px;
+  line-height: var(--valor-altura);
   color: var(--ouro);
 }
-.metrica span { font-size: 9px; text-transform: uppercase; letter-spacing: .6px; color: var(--texto-3); }
+.metrica span {
+  display: block;
+  font-size: var(--rotulo-tam);
+  line-height: var(--rotulo-altura);
+  margin-top: var(--rotulo-espaco);
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: var(--texto-3);
+}
 #metrica-encaixe b { color: var(--acento); }
 .metrica b.pulso { animation: pulso-num .5s cubic-bezier(.2, .9, .3, 1); }
 @keyframes pulso-num {
@@ -1192,8 +1224,7 @@ input[type=range]::-moz-range-thumb {
   .escudo { width: 32px; height: 32px; }
   .time-txt b { font-size: 15px; }
   .barra-tatica { padding: 5px 12px; }
-  .tatica-txt b { font-size: 15px; }
-  .metrica b { font-size: 17px; }
+  .barra-tatica { --valor-tam: 16px; }
   .item-trilho .carta { font-size: 9.5px; }
 
   /* o campo pode ser um pouco mais largo para as cartas não ficarem minúsculas */

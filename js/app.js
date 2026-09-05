@@ -1455,6 +1455,24 @@ $('#metrica-forca').addEventListener('click', folhaForca);
 $('#metrica-encaixe').addEventListener('click', folhaSintonia);
 
 /* =========================================================
+   Alinhamento com o campo
+   ========================================================= */
+
+// O gramado guarda proporção de campo em pé, então quase nunca ocupa toda a
+// coluna. A barra segue a largura dele para as bordas coincidirem — como a
+// largura depende da altura disponível, isso não dá para resolver só no CSS.
+function acompanharLarguraDoCampo() {
+  const gramado = $('#gramado');
+  const coluna = $('.coluna-campo');
+  if (!('ResizeObserver' in window)) return;
+
+  new ResizeObserver(([entrada]) => {
+    const largura = Math.round(entrada.contentRect.width);
+    if (largura > 0) coluna.style.setProperty('--largura-campo', largura + 'px');
+  }).observe(gramado);
+}
+
+/* =========================================================
    Início
    ========================================================= */
 
@@ -1480,6 +1498,7 @@ async function iniciar() {
   }
 
   renderTudo();
+  acompanharLarguraDoCampo();
   prepararDesbloqueioDeAudio();
 
   if ('serviceWorker' in navigator) {
