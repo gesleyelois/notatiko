@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+<title>NoTatiko — Monte seu time</title>
+<meta name="description" content="NoTatiko: monte seu time de futebol com cards de score, escolha a tática e escale os 11. Funciona offline." />
+<meta name="theme-color" content="#05070a" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="NoTatiko" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div class="app">
+
+  <header class="topo">
+    <button class="time-id" id="btn-time" aria-label="Editar time">
+      <span class="escudo" id="topo-escudo"></span>
+      <span class="time-txt">
+        <b id="topo-nome">Meu Time</b>
+        <small id="topo-sub">Toque para configurar</small>
+      </span>
+    </button>
+    <button class="btn-icone" id="btn-som" aria-label="Trilha sonora"></button>
+  </header>
+
+  <div class="conteudo">
+
+    <section class="coluna-campo">
+
+      <div class="barra-tatica">
+        <button class="btn-tatica" id="btn-tatica">
+          <span class="tatica-txt">
+            <b id="tatica-nome">4-3-3</b>
+            <small id="tatica-variacao">Clássico</small>
+          </span>
+          <span class="seta"></span>
+        </button>
+
+        <button class="metrica" id="metrica-forca">
+          <b id="valor-forca">--</b>
+          <span>Força</span>
+        </button>
+        <button class="metrica" id="metrica-encaixe">
+          <b id="valor-encaixe">--</b>
+          <span>Sintonia</span>
+        </button>
+      </div>
+
+      <div class="palco">
+        <div class="gramado" id="gramado">
+        <div class="gramado-fundo">
+          <div class="grama"></div>
+          <svg class="linhas" viewBox="0 0 680 907" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <clipPath id="recorte-meio"><circle cx="340" cy="453.5" r="89" /></clipPath>
+            </defs>
+
+            <image id="escudo-campo" class="escudo-campo" x="251" y="364.5" width="178" height="178"
+                   clip-path="url(#recorte-meio)" preserveAspectRatio="xMidYMid slice" />
+
+            <g class="linha-campo">
+              <rect x="8" y="8" width="664" height="891" />
+              <line x1="8" y1="453.5" x2="672" y2="453.5" />
+              <circle cx="340" cy="453.5" r="89" />
+
+              <rect x="143.2" y="8" width="393.6" height="162" />
+              <rect x="250.5" y="8" width="179" height="54" />
+              <path d="M 269.3 170 A 89 89 0 0 0 410.7 170" />
+
+              <rect x="143.2" y="737" width="393.6" height="162" />
+              <rect x="250.5" y="845" width="179" height="54" />
+              <path d="M 269.3 737 A 89 89 0 0 1 410.7 737" />
+
+              <path d="M 8 28 A 20 20 0 0 0 28 8" />
+              <path d="M 652 8 A 20 20 0 0 0 672 28" />
+              <path d="M 8 879 A 20 20 0 0 1 28 899" />
+              <path d="M 652 899 A 20 20 0 0 1 672 879" />
+
+              <rect class="gol-trave" x="304" y="0" width="72" height="8" />
+              <rect class="gol-trave" x="304" y="899" width="72" height="8" />
+            </g>
+
+            <g class="marca-ponto">
+              <circle cx="340" cy="453.5" r="5" />
+              <circle cx="340" cy="116" r="5" />
+              <circle cx="340" cy="791" r="5" />
+            </g>
+          </svg>
+        </div>
+          <div class="slots" id="slots"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="coluna-elenco">
+      <div class="elenco-topo">
+        <h2>Elenco <span class="contador" id="qtd-elenco">0</span></h2>
+      </div>
+      <div class="trilho" id="trilho"></div>
+    </section>
+
+  </div>
+</div>
+
+<div class="camada-arrasto" id="camada-arrasto"></div>
+
+<div class="folha-fundo" id="folha-fundo"></div>
+<div class="folha" id="folha" role="dialog" aria-modal="true">
+  <div class="folha-alca" id="folha-alca"><span></span></div>
+  <header class="folha-topo">
+    <h2 id="folha-titulo"></h2>
+    <button class="btn-icone" id="folha-fechar" aria-label="Fechar"></button>
+  </header>
+  <div class="folha-corpo" id="folha-corpo"></div>
+  <footer class="folha-rodape" id="folha-rodape"></footer>
+</div>
+
+<div class="dialogo-fundo" id="dialogo-fundo">
+  <div class="dialogo" role="alertdialog" aria-modal="true" aria-labelledby="dialogo-titulo">
+    <h3 id="dialogo-titulo"></h3>
+    <p id="dialogo-texto"></p>
+    <div class="dialogo-acoes">
+      <button class="btn btn-neutro" id="dialogo-nao"></button>
+      <button class="btn btn-perigo" id="dialogo-sim"></button>
+    </div>
+  </div>
+</div>
+
+<div class="revelacao" id="revelacao"><div class="revelacao-carta" id="revelacao-carta"></div></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
