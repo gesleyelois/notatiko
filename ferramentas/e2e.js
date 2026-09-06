@@ -438,6 +438,39 @@ const TESTES = [
     };
   }],
 
+  ['quem está em campo ganha selo, e o aviso virou voz', async () => {
+    const m = await import('../js/audio.js');
+    const escalado = await ate(() => $('.item-trilho.escalado'), { oque: 'uma carta escalada' });
+    const selo = escalado.querySelector('.selo-em-campo');
+    const livre = $('.item-trilho:not(.escalado)');
+
+    // a carta apaga, mas o selo continua aceso: é ele que explica o apagamento
+    const opacidades = {
+      carta: getComputedStyle(escalado.querySelector('.carta')).opacity,
+      selo: selo ? getComputedStyle(selo).opacity : null,
+    };
+
+    m.narrador.ligado = true;
+    m.narrador.ultimaFala = 0;
+    const dito = [];
+    const original = m.narrador.dizer.bind(m.narrador);
+    m.narrador.dizer = (t) => { dito.push(t); return original(t); };
+
+    escalado.click();
+    await espera(500);
+    const torrada = $('.toast');
+    m.narrador.dizer = original;
+
+    const falas = (await import('../js/falas.js')).FALAS;
+    return {
+      temSelo: !!selo, semSeloNoLivre: livre ? !livre.querySelector('.selo-em-campo') : true,
+      opacidades, disse: dito, semTorrada: !torrada,
+      frasesNoCatalogo: Object.values(falas).reduce((a, v) => a + v.length, 0),
+      ok: !!selo && opacidades.selo === '1' && +opacidades.carta < .5
+          && !torrada && dito.length === 1 && falas.jaEmCampo.includes(dito[0]),
+    };
+  }],
+
   ['os efeitos não dependem da trilha estar tocando', async () => {
     // No iOS quem põe a sessão de áudio em modo mídia é um <audio> tocando.
     // Enquanto os efeitos eram Web Audio, calar a música os calava junto.

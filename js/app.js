@@ -1015,10 +1015,20 @@ function renderElenco() {
       + (emCampo ? ' escalado' : '')
       + (selecionado ? ' selecionado' : '');
     el.dataset.jogador = j.id;
-    el.innerHTML = cartaHTML(j) + (selecionado ? acoesCartaTrilhoHTML() : '');
+    // marca de quem está escalado: um selo com o gramado no canto da carta.
+    // Antes só havia o apagamento, que diz "indisponível" mas não diz por quê.
+    el.innerHTML = cartaHTML(j)
+      + (emCampo ? `<span class="selo-em-campo" aria-label="Em campo">${ic.campo}</span>` : '')
+      + (selecionado ? acoesCartaTrilhoHTML() : '');
 
     if (emCampo) {
-      el.addEventListener('click', () => toast(`${j.apelido} já está em campo`));
+      el.addEventListener('click', () => {
+        // era uma torrada de texto; virou fala, como o resto dos avisos
+        narrador.falar('jaEmCampo');
+        el.classList.remove('recusa');
+        void el.offsetWidth;
+        el.classList.add('recusa');
+      });
     } else {
       tornarInterativo(el, { tipo: 'trilho', jogadorId: j.id, aoTocar: () => aoTocarTrilho(j) });
       if (selecionado) ligarAcoesCarta(el, { jogador: j });

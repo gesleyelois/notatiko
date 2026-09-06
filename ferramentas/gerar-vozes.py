@@ -194,23 +194,28 @@ def main():
             gerados += 1
             print(f'  + {nome:<16} {texto!r}  ({destino.stat().st_size // 1024} KB)')
 
-    # o índice completo (não só o que foi gerado agora) para o app e o SW
+    # O índice lista só o que tem mp3 no disco. O aplicativo usa isso para
+    # sortear apenas frases com áudio — frase nova no catálogo sem gravação
+    # fica de fora até ser gerada, em vez de cair na voz do aparelho no meio
+    # de uma sessão que estava toda gravada.
     todas = ler_falas()
     completo = {t: f'{g}-{i + 1}'
                 for g, lista in todas.items()
-                for i, t in enumerate(lista)}
+                for i, t in enumerate(lista)
+                if (SAIDA / f'{g}-{i + 1}.mp3').exists()}
     (SAIDA / 'indice.json').write_text(
         json.dumps({'voz': args.voz, 'modelo': MODELO, 'frases': completo},
                    ensure_ascii=False, indent=2) + '\n',
         encoding='utf-8')
 
-    faltando = [n for n in completo.values() if not (SAIDA / f'{n}.mp3').exists()]
+    no_catalogo = sum(len(v) for v in todas.values())
     total = sum(f.stat().st_size for f in SAIDA.glob('*.mp3'))
     print(f'\n{gerados} novos · {caracteres} caracteres consumidos')
-    print(f'{len(completo) - len(faltando)}/{len(completo)} frases em '
-          f'audio/falas/ · {total // 1024} KB no total')
-    if faltando:
-        print(f'Ainda faltam: {", ".join(faltando)}')
+    print(f'{len(completo)}/{no_catalogo} frases do catálogo com áudio '
+          f'· {total // 1024} KB no total')
+    if len(completo) < no_catalogo:
+        print(f'{no_catalogo - len(completo)} ainda sem gravação — '
+              'o aplicativo não vai sorteá-las até existirem.')
 
 
 if __name__ == '__main__':

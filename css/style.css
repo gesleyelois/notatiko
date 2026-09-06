@@ -835,7 +835,7 @@ input, textarea, [contenteditable] {
 .item-trilho:active { transform: scale(.95); }
 /* já está em campo: some da lista de disponíveis, sem resposta ao toque */
 .item-trilho.escalado {
-  opacity: .38;
+  /* o apagamento é da carta, não do item: o selo precisa continuar aceso */
   cursor: default;
   touch-action: auto;
 }
@@ -966,7 +966,7 @@ input, textarea, [contenteditable] {
 
 /* elenco em modo "quem entra?" */
 .trilho.escolhendo { background: rgba(0, 224, 122, .05); border-radius: var(--raio); }
-.trilho.escolhendo .item-trilho.escalado { opacity: .22; }
+.trilho.escolhendo .item-trilho.escalado .carta { opacity: .22; }
 .trilho.escolhendo .item-trilho:not(.escalado) .carta { outline: 1px solid rgba(0, 224, 122, .45); outline-offset: 2px; }
 
 
@@ -2714,4 +2714,50 @@ input[type=range]::-moz-range-thumb {
 @media (prefers-reduced-motion: reduce) {
   .palco-carta .carta { transform: none; }
   .palco-carta .carta::after { opacity: 0; }
+}
+
+/* =========================================================
+   Selo de quem está em campo
+
+   O apagamento sozinho diz "não dá para usar", mas não diz por quê. O selo
+   responde a pergunta sem escrever nada — e sem repetir o rótulo "em campo"
+   que já tinha sido descartado por poluir a carta.
+   ========================================================= */
+
+.item-trilho { position: relative; }
+
+.selo-em-campo {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--acento);
+  color: #04180f;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .55);
+  /* o selo não apaga junto com a carta: é ele que explica o apagamento */
+  opacity: 1;
+}
+.selo-em-campo svg { width: 13px; height: 13px; }
+
+/* a carta apagada; o selo, não */
+.item-trilho.escalado .carta { opacity: .38; }
+.item-trilho.escalado { opacity: 1; }
+
+/* tocar em quem já joga: a carta nega com a cabeça */
+.item-trilho.recusa { animation: recusar .4s ease-out; }
+@keyframes recusar {
+  0%, 100% { transform: translateX(0); }
+  22%      { transform: translateX(-5px); }
+  55%      { transform: translateX(4px); }
+  80%      { transform: translateX(-2px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item-trilho.recusa { animation: none; }
 }

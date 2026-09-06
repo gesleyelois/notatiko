@@ -496,10 +496,17 @@ class Narrador {
     return !!this.gravacoes || ('speechSynthesis' in window && this.pronta);
   }
 
-  // Sorteia a frase sem falar — permite exibir na tela exatamente o que a
-  // voz vai dizer.
+  /* Sorteia a frase sem falar — permite exibir na tela exatamente o que a
+     voz vai dizer.
+
+     Havendo gravações, só entram no sorteio as frases que têm áudio. Assim
+     acrescentar frase nova ao catálogo nunca mistura a voz gravada com a do
+     aparelho no meio da mesma sessão: as novas só passam a aparecer depois
+     de geradas.                                                            */
   frase(chave) {
-    return sortear(FALAS[chave] || []) || null;
+    const todas = FALAS[chave] || [];
+    const comAudio = this.gravacoes ? todas.filter((t) => this.gravacoes[t]) : todas;
+    return sortear(comAudio.length ? comAudio : todas) || null;
   }
 
   falar(chave) {
