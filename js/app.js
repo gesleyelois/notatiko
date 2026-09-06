@@ -20,7 +20,8 @@ const POSICOES = [
   { sigla: 'ATA', nome: 'Atacante', grupo: 'ata' },
 ];
 
-const ATRIBUTOS = [
+/* As seis do jogador de linha. */
+const ATRIBUTOS_LINHA = [
   { chave: 'rit', sigla: 'RIT', nome: 'Ritmo' },
   { chave: 'fin', sigla: 'FIN', nome: 'Finalização' },
   { chave: 'pas', sigla: 'PAS', nome: 'Passe' },
@@ -29,10 +30,32 @@ const ATRIBUTOS = [
   { chave: 'fis', sigla: 'FIS', nome: 'Físico' },
 ];
 
+/* As seis do goleiro.
+
+   Goleiro não é jogador de linha com outros pesos: é outro ofício. "Defesa"
+   de um zagueiro é marcação; de um goleiro é defender chute. Era o mesmo
+   número medindo duas coisas diferentes — e o que segurava a distorção era
+   um multiplicador de 0.6 solto no código, que penalizava sem explicar.
+   Finalização e drible, então, pesavam 12% da nota de um goleiro sem
+   descrever nada do que ele faz.                                          */
+const ATRIBUTOS_GOL = [
+  { chave: 'ela', sigla: 'ELA', nome: 'Elasticidade' },
+  { chave: 'man', sigla: 'MAN', nome: 'Manejo' },
+  { chave: 'ref', sigla: 'REF', nome: 'Reflexos' },
+  { chave: 'pos', sigla: 'POS', nome: 'Posicionamento' },
+  { chave: 'rep', sigla: 'REP', nome: 'Reposição' },
+  { chave: 'vel', sigla: 'VEL', nome: 'Velocidade' },
+];
+
+const ehGoleiro = (posicao) => posicao === 'GOL';
+const atributosDe = (j) => (ehGoleiro(j?.posicao) ? ATRIBUTOS_GOL : ATRIBUTOS_LINHA);
+// compatibilidade: código antigo que só conhecia as seis de linha
+const ATRIBUTOS = ATRIBUTOS_LINHA;
+
 // Quanto cada característica pesa na nota, por posição. Somam 1 em cada linha.
-// Antes o goleiro tinha 10% de finalização e o zagueiro 10% — distorcia as notas.
+const PESOS_GOL = { ref: .26, ela: .22, man: .20, pos: .16, rep: .10, vel: .06 };
+
 const PESOS = {
-  GOL: { def: .45, fis: .22, pas: .15, dri: .08, rit: .06, fin: .04 },
   ZAG: { def: .38, fis: .26, pas: .12, rit: .12, dri: .07, fin: .05 },
   LE:  { def: .24, rit: .24, pas: .18, dri: .16, fis: .13, fin: .05 },
   LD:  { def: .24, rit: .24, pas: .18, dri: .16, fis: .13, fin: .05 },
@@ -44,8 +67,10 @@ const PESOS = {
   ATA: { fin: .35, rit: .20, dri: .15, fis: .15, pas: .10, def: .05 },
 };
 
+const PERFIL_GOL = { ela: 74, man: 72, ref: 78, pos: 70, rep: 58, vel: 52 };
+
 const PERFIS = {
-  GOL: { rit: 45, fin: 25, pas: 52, dri: 40, def: 78, fis: 72 },
+  GOL: PERFIL_GOL,
   ZAG: { rit: 58, fin: 35, pas: 55, dri: 45, def: 80, fis: 78 },
   LE:  { rit: 76, fin: 45, pas: 66, dri: 66, def: 70, fis: 66 },
   LD:  { rit: 76, fin: 45, pas: 66, dri: 66, def: 70, fis: 66 },
@@ -114,29 +139,64 @@ function escapar(txt = '') {
   return d.innerHTML;
 }
 
-// Nota do jogador atuando numa posição específica: usa os pesos DAQUELA posição.
-// É o que permite dizer que um goleiro no ataque rende menos — porque ali
-// cobram finalização e ritmo dele, não defesa.
-function notaNaPosicao(j, posicao) {
-  const pesos = PESOS[posicao] || PESOS[j.posicao] || {};
+// média ponderada de um conjunto de atributos por um conjunto de pesos
+function media(j, lista, pesos) {
   let soma = 0, total = 0;
-  for (const { chave } of ATRIBUTOS) {
-    const p = pesos[chave] ?? 1 / 6;
+  for (const { chave } of lista) {
+    const p = pesos[chave] ?? 1 / lista.length;
     soma += (j[chave] ?? 50) * p;
     total += p;
   }
-  const nota = soma / (total || 1);
+  return soma / (total || 1);
+}
 
-  // "Defesa" de um jogador de linha é marcação, não defender gol — são ofícios
-  // diferentes. Cruzar a fronteira do gol derruba a nota de verdade.
-  const goleiro = (pos) => pos === 'GOL';
-  if (goleiro(posicao) !== goleiro(j.posicao)) return Math.round(nota * .6);
+/* Nota do jogador atuando numa posição específica.
 
-  return Math.round(nota);
+   Dentro do mesmo ofício, são os pesos daquela posição sobre os atributos
+   que ele tem. Cruzando a fronteira do gol, não há atributo comum: o que
+   sobra é uma aproximação declarada. Um atacante no gol vale pelo que ele
+   leva para lá — porte e reação —, não pela finalização; um goleiro na
+   linha, pela saída e pelo pé. Em ambos os casos, com desconto pesado,
+   porque improvisar no ofício alheio custa caro.                          */
+const PROXY_PARA_GOL = ['def', 'fis', 'rit'];   // o que um jogador de linha leva ao gol
+const PROXY_PARA_LINHA = ['vel', 'rep', 'pos']; // o que um goleiro leva à linha
+const DESCONTO_FORA_DO_OFICIO = .55;
+
+function notaNaPosicao(j, posicao) {
+  const souGoleiro = ehGoleiro(j.posicao);
+  const vagaDeGoleiro = ehGoleiro(posicao);
+
+  if (souGoleiro === vagaDeGoleiro) {
+    const pesos = vagaDeGoleiro ? PESOS_GOL : (PESOS[posicao] || PESOS[j.posicao] || {});
+    return Math.round(media(j, atributosDe(j), pesos));
+  }
+
+  const proxy = vagaDeGoleiro ? PROXY_PARA_GOL : PROXY_PARA_LINHA;
+  const bruta = proxy.reduce((soma, c) => soma + (j[c] ?? 50), 0) / proxy.length;
+  return Math.round(bruta * DESCONTO_FORA_DO_OFICIO);
 }
 
 // Nota natural — a que aparece na carta, na posição para a qual ele foi criado.
 const notaDe = (j) => notaNaPosicao(j, j.posicao);
+
+/* ---------- posições em que o jogador atua ----------
+
+   A principal é a da carta. As alternativas dizem "ele joga aí também":
+   não acusam improviso e quase não custam sintonia. Duas, no máximo — com
+   mais que isso todo mundo joga em todo lugar e a sintonia perde o sentido.
+
+   A fronteira do gol não se atravessa: goleiro e jogador de linha nem os
+   mesmos atributos têm, então marcar GOL como alternativa de um atacante
+   seria prometer o que os números não sustentam.                          */
+
+const MAX_ALTERNATIVAS = 2;
+
+const posicoesDe = (j) => [j.posicao, ...(j.posicoes || [])].filter(Boolean);
+const atuaEm = (j, posicao) => posicoesDe(j).includes(posicao);
+
+// alternativa possível? mesma margem do gol e ainda não escolhida
+const alternativaValida = (j, sigla) =>
+  sigla !== j.posicao && ehGoleiro(sigla) === ehGoleiro(j.posicao);
 
 function tierDe(nota) {
   if (nota >= 85) return 'elite';
@@ -168,6 +228,7 @@ function sintonia() {
     const j = jogadorNoSlot(slot.id);
     if (!j) continue;
     if (j.posicao === slot.pos) pontos += 100;
+    else if (atuaEm(j, slot.pos)) pontos += 85;   // joga aí também, mas a casa é outra
     else {
       const a = ORDEM_GRUPOS.indexOf(grupoDe(j.posicao));
       const b = ORDEM_GRUPOS.indexOf(grupoDe(slot.pos));
@@ -236,7 +297,7 @@ function classeNome(apelido = '') {
 function cartaHTML(j, detalhada = false, foraDePosicao = false, editavel = false) {
   const nota = notaDe(j);
   const foto = j.foto ? `<img src="${j.foto}" alt="">` : ic.pessoa;
-  const stats = ATRIBUTOS
+  const stats = atributosDe(j)
     .map((a) => `<div><b>${j[a.chave] ?? 50}</b><i>${a.sigla}</i></div>`)
     .join('');
 
@@ -254,7 +315,11 @@ function cartaHTML(j, detalhada = false, foraDePosicao = false, editavel = false
   return `
     <div class="carta ${tierDe(nota)}${detalhada ? ' detalhada' : ''}${foraDePosicao ? ' fora-de-posicao' : ''}" data-jogador="${j.id}">
       <div class="carta-corpo">
-        <span class="carta-nota"><b>${nota}</b><span>${j.posicao || '—'}</span></span>
+        <span class="carta-nota">
+          <b>${nota}</b>
+          <span>${j.posicao || '—'}</span>
+          ${(j.posicoes || []).length ? `<i class="carta-alternativas">${j.posicoes.join(' ')}</i>` : ''}
+        </span>
         ${foraDePosicao ? '<span class="aviso-posicao" title="Fora de posição">!</span>' : ''}
         ${areaFoto}
       </div>
@@ -280,7 +345,8 @@ function pontoDoEixo(i, valor, raio = RADAR.raio) {
   return [RADAR.cx + r * Math.cos(a), RADAR.cy + r * Math.sin(a)];
 }
 
-function radarHTML(valores) {
+function radarHTML(valores, lista = ATRIBUTOS_LINHA) {
+  const ATRIBUTOS = lista;
   const anel = (frac) => ATRIBUTOS
     .map((_, i) => pontoDoEixo(i, 99 * frac).map((n) => n.toFixed(1)).join(','))
     .join(' ');
@@ -317,7 +383,8 @@ function radarHTML(valores) {
 
 // Arrastar: o eixo é escolhido no toque e travado até soltar, para não
 // esbarrar no vizinho no meio do movimento.
-function ligarRadar(svg, valores, aoMudar) {
+function ligarRadar(svg, valores, lista, aoMudar) {
+  const ATRIBUTOS = lista;
   let eixo = null;
 
   const local = (e) => {
@@ -369,7 +436,8 @@ function ligarRadar(svg, valores, aoMudar) {
 
 // Redesenha só o que muda no radar, sem recriar o SVG (o arraste não pode
 // perder o elemento debaixo do dedo).
-function pintarRadar(valores) {
+function pintarRadar(valores, lista = ATRIBUTOS_LINHA) {
+  const ATRIBUTOS = lista;
   $('#radar-forma').setAttribute('points',
     ATRIBUTOS.map((a, i) => pontoDoEixo(i, valores[a.chave]).map((n) => n.toFixed(1)).join(',')).join(' '));
   for (const [i, a] of ATRIBUTOS.entries()) {
@@ -572,7 +640,7 @@ function renderCampo() {
 
   for (const slot of slotsFormacao()) {
     const j = jogadorNoSlot(slot.id);
-    const fora = j && j.posicao !== slot.pos;
+    const fora = j && !atuaEm(j, slot.pos);   // atuar ali não é improviso
     const selecionado = sel?.tipo === 'slot' && sel.slotId === slot.id;
     // com algo selecionado, os demais slots viram destino possível
     const destino = !!sel && !selecionado;
@@ -694,6 +762,7 @@ function ligarCampoEditavel(seletor, { limite = 40, aoMudar } = {}) {
 function deslizarHTML(id, texto) {
   return `
     <div class="deslizar" id="${id}" role="button" tabindex="0" aria-label="${texto}">
+      <span class="deslizar-rastro" aria-hidden="true"><i></i><i></i><i></i></span>
       <span class="deslizar-texto">${texto}</span>
       <span class="deslizar-punho">${ic.seta}</span>
     </div>`;
@@ -1289,7 +1358,7 @@ function folhaTime() {
 
         <p class="ajuda">O escudo vai para o placar e para o círculo central do gramado.</p>
       </div>`,
-    rodape: deslizarHTML('salvar-time', estado.time ? 'Deslize para salvar' : 'Deslize para fundar'),
+    rodape: deslizarHTML('salvar-time', estado.time ? 'Salvar' : 'Fundar'),
     aoMontar: () => {
       ligarCampoEditavel('#in-nome-time', { limite: 26 });
       ligarUpload('#in-escudo', '#up-escudo', 420, (d) => escudo = d);
@@ -1326,8 +1395,8 @@ function folhaMembro(existente) {
           <button class="chip-funcao ${f === base.funcao ? 'ativa' : ''}" data-funcao="${f}">${f}</button>`).join('')}
       </div>`,
     rodape: `
-      ${novo ? '' : `<button class="btn btn-perigo" id="excluir-membro">${ic.lixeira}</button>`}
-      ${deslizarHTML('salvar-membro', novo ? 'Deslize para contratar' : 'Deslize para salvar')}`,
+      ${novo ? '' : `<button class="acao-redonda perigo discreta" id="excluir-membro" aria-label="Excluir membro">${ic.lixeira}</button>`}
+      ${deslizarHTML('salvar-membro', novo ? 'Contratar' : 'Salvar')}`,
     aoMontar: () => {
       // o campo de nome mora dentro da credencial, que é o que vamos
       // desenhar: na primeira passada ele ainda não existe
@@ -1513,8 +1582,11 @@ function folhaSintonia() {
   const { slots, escalados } = dadosDoTime();
   const valor = escalados.length ? sintonia() : 0;
   const noLugar = escalados.filter((d) => d.j.posicao === d.slot.pos);
-  const mesmoSetor = escalados.filter((d) => d.j.posicao !== d.slot.pos && grupoDe(d.j.posicao) === grupoDe(d.slot.pos));
-  const trocados = escalados.filter((d) => grupoDe(d.j.posicao) !== grupoDe(d.slot.pos));
+  // quem atua ali como alternativa não é improviso: entra na sua própria lista
+  const alternativa = escalados.filter((d) => d.j.posicao !== d.slot.pos && atuaEm(d.j, d.slot.pos));
+  const fora = escalados.filter((d) => !atuaEm(d.j, d.slot.pos));
+  const mesmoSetor = fora.filter((d) => grupoDe(d.j.posicao) === grupoDe(d.slot.pos));
+  const trocados = fora.filter((d) => grupoDe(d.j.posicao) !== grupoDe(d.slot.pos));
 
   const listaHTML = (itens, titulo, classe) => itens.length ? `
     <div class="lista-alerta ${classe}">
@@ -1532,13 +1604,14 @@ function folhaSintonia() {
       <div class="destaque">
         <div class="destaque-num pct ${valor >= 80 ? 'bom' : valor >= 50 ? 'medio' : 'ruim'}">${valor}%</div>
         <div>
-          <b>${noLugar.length} de ${slots.length} na posição ideal</b>
-          <p>Mede se cada um está jogando onde foi criado para jogar.
-             Posição exata vale 100%, uma posição do mesmo setor vale 60%,
-             e de setor vizinho vale 25%.</p>
+          <b>${noLugar.length + alternativa.length} de ${slots.length} jogando onde atuam</b>
+          <p>Mede se cada um está jogando onde sabe. A posição principal vale
+             100%; uma que ele também cobre, 85%; outra do mesmo setor, 60%;
+             de setor vizinho, 25%.</p>
         </div>
       </div>
 
+      ${listaHTML(alternativa, 'Na segunda função', 'ok')}
       ${listaHTML(mesmoSetor, 'Improvisados no mesmo setor', 'brando')}
       ${listaHTML(trocados, 'Fora do setor', '')}
 
@@ -1574,21 +1647,26 @@ function folhaJogador(jogadorExistente, posicaoSugerida) {
   const base = jogadorExistente || {
     apelido: '',
     posicao: posicaoSugerida || null,
+    posicoes: [],
     foto: '',
     ...(posicaoSugerida
       ? PERFIS[posicaoSugerida]
-      : Object.fromEntries(ATRIBUTOS.map((a) => [a.chave, 50]))),
+      : Object.fromEntries(ATRIBUTOS_LINHA.map((a) => [a.chave, 50]))),
   };
   let foto = base.foto || '';
   let posicao = base.posicao;
+  let alternativas = [...(base.posicoes || [])];
   let tocouNosAtributos = !novo;
-  const valores = Object.fromEntries(ATRIBUTOS.map((a) => [a.chave, base[a.chave]]));
+  // qual dos dois ofícios está em edição — muda quando se cruza o gol
+  let lista = ehGoleiro(posicao) ? ATRIBUTOS_GOL : ATRIBUTOS_LINHA;
+  let valores = Object.fromEntries(lista.map((a) => [a.chave, base[a.chave] ?? 50]));
 
   const lerFormulario = ({ cru = false } = {}) => ({
     // cru: o que vai para a carta enquanto se edita (vazio fica vazio, com
     // marca d'água). Salvo, um nome em branco vira "Sem nome".
     apelido: ($('#in-apelido') ? textoDe('#in-apelido') : base.apelido) || (cru ? '' : 'Sem nome'),
     posicao,
+    posicoes: alternativas,
     foto,
     ...valores,
   });
@@ -1607,13 +1685,18 @@ function folhaJogador(jogadorExistente, posicaoSugerida) {
       </div>
       <p class="nome-posicao" id="nome-posicao"></p>
 
-      <div class="bloco-radar">
-        ${radarHTML(valores)}
+      <div class="alternativas" id="alternativas" hidden>
+        <span class="alternativas-rotulo">Também joga em</span>
+        <div class="alternativas-chips" id="alternativas-chips"></div>
+      </div>
+
+      <div class="bloco-radar" id="bloco-radar">
+        ${radarHTML(valores, lista)}
         <p class="dica-radar">Arraste as pontas para moldar o jogador</p>
       </div>`,
     rodape: `
-      ${novo ? '' : `<button class="btn btn-perigo" id="excluir-jogador">${ic.lixeira}</button>`}
-      ${deslizarHTML('salvar-jogador', novo ? 'Deslize para assinar' : 'Deslize para salvar')}`,
+      ${novo ? '' : `<button class="acao-redonda perigo discreta" id="excluir-jogador" aria-label="Excluir jogador">${ic.lixeira}</button>`}
+      ${deslizarHTML('salvar-jogador', novo ? 'Assinar' : 'Salvar')}`,
     aoMontar: () => {
       // A carta é o formulário: redesenhá-la inteira a cada tecla mataria o
       // foco do campo. Por isso o nome só repinta o que depende dele.
@@ -1636,22 +1719,64 @@ function folhaJogador(jogadorExistente, posicaoSugerida) {
       repintarCarta();
       ligarUpload('#in-foto', null, 420, (d) => { foto = d; repintarCarta(); });
 
+      // O radar inteiro é refeito quando o ofício muda: são outros seis eixos.
+      const montarRadar = () => {
+        $('#bloco-radar').innerHTML =
+          radarHTML(valores, lista) + '<p class="dica-radar">Arraste as pontas para moldar o jogador</p>';
+        ligarRadar($('#radar'), valores, lista, () => {
+          tocouNosAtributos = true;
+          pintarRadar(valores, lista);
+          atualizarNotaEStats();
+        });
+      };
+
+      // As alternativas só aparecem depois de haver uma principal, e só
+      // oferecem posições do mesmo ofício.
+      const renderAlternativas = () => {
+        const caixa = $('#alternativas');
+        if (!posicao) { caixa.hidden = true; return; }
+        caixa.hidden = false;
+        const cheio = alternativas.length >= MAX_ALTERNATIVAS;
+        $('#alternativas-chips').innerHTML = POSICOES
+          .filter((p) => alternativaValida({ posicao }, p.sigla))
+          .map((p) => {
+            const escolhida = alternativas.includes(p.sigla);
+            return `<button class="chip-alt setor-${p.grupo} ${escolhida ? 'ativa' : ''}"
+                            data-pos="${p.sigla}" title="${p.nome}"
+                            ${!escolhida && cheio ? 'disabled' : ''}>${p.sigla}</button>`;
+          }).join('');
+      };
+
       const trocarPosicao = (sigla) => {
+        const mudouDeOficio = ehGoleiro(sigla) !== ehGoleiro(posicao);
         posicao = sigla;
         $('#chips-posicao .ativa')?.classList.remove('ativa');
         if (!sigla) {
           $('#nome-posicao').textContent = 'Escolha onde ele joga';
           $('#nome-posicao').classList.add('pedindo');
+          $('#alternativas').hidden = true;
           return atualizarNotaEStats();
         }
         $(`.chip-pos[data-pos="${sigla}"]`).classList.add('ativa');
         $('#nome-posicao').textContent = POSICOES.find((p) => p.sigla === sigla).nome;
         $('#nome-posicao').classList.remove('pedindo');
-        // jogador novo com o radar intocado: o perfil da posição molda a forma
-        if (novo && !tocouNosAtributos) {
+
+        // cruzar a fronteira do gol troca os seis atributos: o que ele tinha
+        // não descreve mais o que ele faz, então o perfil da nova função entra
+        if (mudouDeOficio) {
+          lista = ehGoleiro(sigla) ? ATRIBUTOS_GOL : ATRIBUTOS_LINHA;
+          valores = { ...(ehGoleiro(sigla) ? PERFIL_GOL : PERFIS[sigla]) };
+          alternativas = [];               // não sobrevivem à troca de ofício
+          tocouNosAtributos = false;
+          montarRadar();
+        } else if (novo && !tocouNosAtributos) {
+          // jogador novo com o radar intocado: o perfil da posição molda a forma
           Object.assign(valores, PERFIS[sigla]);
-          pintarRadar(valores);
+          pintarRadar(valores, lista);
         }
+        // a principal não pode ser alternativa dela mesma
+        alternativas = alternativas.filter((p) => alternativaValida({ posicao }, p));
+        renderAlternativas();
         atualizarNotaEStats();
       };
 
@@ -1664,7 +1789,17 @@ function folhaJogador(jogadorExistente, posicaoSugerida) {
         carta.querySelector('.carta-nota b').textContent = nota;
         carta.querySelector('.carta-nota span').textContent = posicao;
         carta.querySelectorAll('.carta-stats b')
-          .forEach((b, i) => { b.textContent = valores[ATRIBUTOS[i].chave]; });
+          .forEach((b, i) => { b.textContent = valores[lista[i].chave]; });
+        carta.querySelectorAll('.carta-stats i')
+          .forEach((el, i) => { el.textContent = lista[i].sigla; });
+        const alt = carta.querySelector('.carta-alternativas');
+        if (alt) alt.textContent = alternativas.join(' ');
+        else if (alternativas.length) {
+          const novoEl = document.createElement('i');
+          novoEl.className = 'carta-alternativas';
+          novoEl.textContent = alternativas.join(' ');
+          carta.querySelector('.carta-nota').appendChild(novoEl);
+        }
       };
 
       $('#chips-posicao').addEventListener('click', (e) => {
@@ -1674,9 +1809,17 @@ function folhaJogador(jogadorExistente, posicaoSugerida) {
         trocarPosicao(chip.dataset.pos);
       });
 
-      ligarRadar($('#radar'), valores, () => {
-        tocouNosAtributos = true;
-        pintarRadar(valores);
+      montarRadar();
+
+      $('#alternativas-chips').addEventListener('click', (e) => {
+        const chip = e.target.closest('.chip-alt');
+        if (!chip || chip.disabled) return;
+        const p = chip.dataset.pos;
+        alternativas = alternativas.includes(p)
+          ? alternativas.filter((x) => x !== p)
+          : [...alternativas, p].slice(0, MAX_ALTERNATIVAS);
+        efeitos.tocar('toque');
+        renderAlternativas();
         atualizarNotaEStats();
       });
 
@@ -1729,13 +1872,20 @@ async function excluirJogador(j) {
    Confirmação
    ========================================================= */
 
-function confirmar({ titulo, texto, acao, cancelar = 'Manter' }) {
+// As ações são dois círculos: X cinza volta, lixeira vermelha executa. A
+// forma e a cor já dizem o que cada uma faz — o verbo escrito era ruído, e
+// dois botões de texto lado a lado ainda obrigam a ler para escolher.
+function confirmar({ titulo, texto, acao, cancelar = 'Manter', icone = 'lixeira' }) {
   return new Promise((resolve) => {
     const fundo = $('#dialogo-fundo');
     $('#dialogo-titulo').textContent = titulo;
     $('#dialogo-texto').textContent = texto;
-    $('#dialogo-sim').textContent = acao;
-    $('#dialogo-nao').textContent = cancelar;
+    $('#dialogo-sim').innerHTML = ic[icone] || ic.lixeira;
+    $('#dialogo-sim').setAttribute('aria-label', acao);
+    $('#dialogo-sim').title = acao;
+    $('#dialogo-nao').innerHTML = ic.fechar;
+    $('#dialogo-nao').setAttribute('aria-label', cancelar);
+    $('#dialogo-nao').title = cancelar;
     fundo.classList.add('aberto');
 
     const fechar = (valor) => {
@@ -1888,6 +2038,28 @@ function prepararDesbloqueioDeAudio() {
   document.addEventListener('pointerdown', desbloquear, { once: true });
 }
 
+/* Goleiros criados antes dos atributos próprios.
+
+   Eles têm as seis de linha, onde "defesa" queria dizer defender chute.
+   A conversão é declarada: reflexo e elasticidade saem da defesa, manejo e
+   posicionamento pesam também o físico, reposição vem do passe e a
+   velocidade do ritmo. Roda uma vez e grava.                              */
+async function migrarGoleiros(jogadores) {
+  const antigos = jogadores.filter((j) => j.posicao === 'GOL' && j.ela === undefined);
+  if (!antigos.length) return jogadores;
+
+  for (const j of antigos) {
+    const def = j.def ?? 50, fis = j.fis ?? 50;
+    const corpo = Math.round((def + fis) / 2);
+    Object.assign(j, {
+      ela: def, ref: def, man: corpo, pos: corpo,
+      rep: j.pas ?? 50, vel: j.rit ?? 50,
+    });
+    await DB.salvarJogador(j);
+  }
+  return jogadores;
+}
+
 /* =========================================================
    Eventos globais
    ========================================================= */
@@ -1924,7 +2096,7 @@ async function iniciar() {
   efeitos.ligado = estado.audio.efeitos;
   narrador.ligado = estado.audio.vozes;
   estado.time = time;
-  estado.jogadores = jogadores;
+  estado.jogadores = await migrarGoleiros(jogadores);
   if (escalacao && TATICAS[escalacao.formacao]) {
     // escalações antigas não guardavam a variação
     const variacao = TATICAS[escalacao.formacao].variacoes[escalacao.variacao]

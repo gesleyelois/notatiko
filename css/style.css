@@ -1471,8 +1471,7 @@ input[type=range]::-moz-range-thumb {
   text-transform: uppercase;
 }
 .dialogo p { margin: 0 0 18px; font-size: 13.5px; color: var(--texto-2); line-height: 1.5; }
-.dialogo-acoes { display: flex; gap: 9px; }
-.dialogo-acoes .btn { flex: 1; }
+/* as ações do diálogo viraram círculos de ícone (ver "Ação redonda") */
 
 /* =========================================================
    Carta de criar jogador (primeiro item do elenco)
@@ -2352,15 +2351,42 @@ input[type=range]::-moz-range-thumb {
 .deslizar-texto {
   position: relative;
   font-family: var(--fonte-cond);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 800;
-  letter-spacing: 1.2px;
+  letter-spacing: 1.6px;
   text-transform: uppercase;
-  color: var(--texto-2);
+  color: var(--texto);
   pointer-events: none;
   /* some conforme o punho avança: o trilho cheio já diz tudo */
   opacity: calc(1 - var(--progresso) * 1.6);
 }
+
+/* Rastro de setas correndo para a direita: é a animação que diz "arraste",
+   no lugar da frase "deslize para…" escrita no trilho. */
+.deslizar-rastro {
+  position: absolute;
+  left: 58px;
+  display: flex;
+  gap: 5px;
+  pointer-events: none;
+  opacity: calc(1 - var(--progresso) * 2);
+}
+.deslizar-rastro i {
+  width: 7px;
+  height: 7px;
+  border-top: 2px solid var(--acento);
+  border-right: 2px solid var(--acento);
+  transform: rotate(45deg);
+  opacity: .2;
+  animation: correr 1.6s ease-in-out infinite;
+}
+.deslizar-rastro i:nth-child(2) { animation-delay: .16s; }
+.deslizar-rastro i:nth-child(3) { animation-delay: .32s; }
+@keyframes correr {
+  0%, 55%, 100% { opacity: .18; }
+  22%           { opacity: .95; }
+}
+.deslizar.arrastando .deslizar-rastro { opacity: 0; }
 
 .deslizar-punho {
   position: absolute;
@@ -2486,3 +2512,116 @@ input[type=range]::-moz-range-thumb {
 @media (prefers-reduced-motion: reduce) {
   .painel-som, .canal-chave::after { transition: none; }
 }
+
+/* =========================================================
+   Ação redonda — a forma e a cor dizem o que o botão faz
+
+   Substitui os pares de botões com verbo escrito. Vermelho com lixeira
+   executa; cinza com X volta. Não é preciso ler para escolher.
+   ========================================================= */
+
+.acao-redonda {
+  width: 62px;
+  height: 62px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .14s, background .15s, box-shadow .15s;
+}
+.acao-redonda svg { width: 24px; height: 24px; }
+.acao-redonda:active { transform: scale(.9); }
+
+.acao-redonda.neutra {
+  background: rgba(255, 255, 255, .06);
+  box-shadow: inset 0 0 0 1px var(--borda-clara);
+  color: var(--texto-2);
+}
+.acao-redonda.perigo {
+  background: rgba(255, 77, 79, .16);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 77, 79, .5);
+  color: var(--vermelho);
+}
+.acao-redonda.perigo:active { background: rgba(255, 77, 79, .3); }
+
+/* no rodapé da ficha ela é coadjuvante do deslizar, não rival */
+.acao-redonda.discreta {
+  width: 54px;
+  height: 54px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(255, 77, 79, .28);
+  color: rgba(255, 77, 79, .8);
+}
+.acao-redonda.discreta svg { width: 20px; height: 20px; }
+
+.dialogo-acoes { display: flex; gap: 18px; justify-content: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .deslizar-rastro i { animation: none; opacity: .6; }
+}
+
+/* =========================================================
+   Posições alternativas
+
+   A principal fica na grade grande; as alternativas, numa fileira menor
+   embaixo. A hierarquia visual diz qual é a casa dele e quais são as
+   funções que ele também cobre.
+   ========================================================= */
+
+.alternativas { margin-top: 10px; }
+.alternativas[hidden] { display: none; }
+
+.alternativas-rotulo {
+  display: block;
+  margin-bottom: 5px;
+  text-align: center;
+  font-family: var(--fonte-cond);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--texto-3);
+}
+
+.alternativas-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5px;
+}
+
+.chip-alt {
+  padding: 5px 10px;
+  border-radius: 20px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--borda);
+  color: var(--texto-3);
+  font-family: var(--fonte-cond);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .6px;
+  transition: transform .12s, color .15s, box-shadow .15s, background .15s;
+}
+.chip-alt:active { transform: scale(.93); }
+.chip-alt.ativa {
+  background: rgba(0, 232, 132, .14);
+  box-shadow: inset 0 0 0 1px rgba(0, 232, 132, .55);
+  color: var(--acento);
+}
+.chip-alt[disabled] { opacity: .3; pointer-events: none; }
+
+/* as siglas alternativas ficam sob a principal, bem menores */
+.carta-alternativas {
+  display: block;
+  margin-top: .06em;
+  font-size: .46em;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: .08em;
+  opacity: .62;
+}
+
+/* quem está na segunda função não é problema: fica em verde, não em âmbar */
+.lista-alerta.ok { border-color: rgba(0, 232, 132, .3); }
+.lista-alerta.ok b { color: var(--acento); }

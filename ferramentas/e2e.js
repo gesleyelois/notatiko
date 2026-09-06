@@ -24,10 +24,15 @@ async function ate(cond, { limite = 4000, passo = 60, oque = 'condição' } = {}
   throw new Error(`tempo esgotado esperando ${oque}`);
 }
 
+// As cartas do trilho e do campo distinguem toque de arrasto pela distância
+// percorrida — sem coordenadas, o delta vira NaN e o toque não conta.
 function toque(el) {
   if (!el) throw new Error('elemento não existe para tocar');
-  el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1 }));
-  el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 1 }));
+  const r = el.getBoundingClientRect();
+  const o = { bubbles: true, pointerId: 1, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
+  el.dispatchEvent(new PointerEvent('pointerdown', o));
+  el.dispatchEvent(new PointerEvent('pointerup', o));
+  window.dispatchEvent(new PointerEvent('pointerup', o));
   el.click();
 }
 
@@ -331,6 +336,105 @@ const TESTES = [
       ok: canais.length === 3 && todosLigados
           && depois.trilhaLigada === false && depois.trilhaTocando === false
           && depois.vozes === true && depois.efeitos === true,
+    };
+  }],
+
+  ['goleiro e jogador de linha têm características diferentes', async () => {
+    // goleiro pela carta
+    toque($('.carta-nova'));
+    await ate(() => $('#radar'), { oque: 'a ficha' });
+    escrever($('#in-apelido'), 'PAREDÃO');
+    toque($('.chip-pos[data-pos="GOL"]'));
+    await espera(400);
+    const doGoleiro = $$('#radar .radar-sigla').map((t) => t.textContent);
+    // as alternativas de um goleiro não podem incluir posição de linha
+    const altsDoGoleiro = $$('.chip-alt').map((c) => c.dataset.pos);
+
+    toque($('.chip-pos[data-pos="ATA"]'));
+    await espera(400);
+    const doAtacante = $$('#radar .radar-sigla').map((t) => t.textContent);
+    const altsDoAtacante = $$('.chip-alt').map((c) => c.dataset.pos);
+
+    puxarFichaParaBaixo(500);
+    await espera(600);
+    return {
+      goleiro: doGoleiro, atacante: doAtacante,
+      alternativasDoGoleiro: altsDoGoleiro, alternativasDoAtacante: altsDoAtacante,
+      ok: doGoleiro.join() === 'ELA,MAN,REF,POS,REP,VEL'
+          && doAtacante.join() === 'RIT,FIN,PAS,DRI,DEF,FIS'
+          // a fronteira do gol não se atravessa nas alternativas
+          && altsDoGoleiro.length === 0
+          && !altsDoAtacante.includes('GOL'),
+    };
+  }],
+
+  ['a segunda função não conta como improviso', async () => {
+    // jogador próprio, para não depender de quem já está em campo
+    toque($('.carta-nova'));
+    await ate(() => $('#radar'), { oque: 'a ficha' });
+    escrever($('#in-apelido'), 'CURINGA');
+    toque($('.chip-pos[data-pos="VOL"]'));
+    await ate(() => $('#alternativas-chips .chip-alt'), { oque: 'as alternativas' });
+    toque($('.chip-alt[data-pos="ZAG"]'));
+    await espera(300);
+    const marcada = $('.chip-alt[data-pos="ZAG"]').classList.contains('ativa');
+    deslizar('#salvar-jogador');
+    await espera(1500);
+    if ($('#revelacao')?.classList.contains('aberta')) { toque($('#revelacao')); await espera(800); }
+
+    // escala no ZAG, que é a segunda função dele
+    toque($('.slot[data-slot="zag1"]'));
+    await ate(() => $('.slot.selecionado'), { oque: 'a posição' });
+    const disponivel = await ate(() => $$('.item-trilho:not(.escalado)')
+      .find((el) => el.textContent.includes('CURINGA')), { oque: 'o CURINGA no elenco' });
+    toque(disponivel);
+    await ate(() => $('.slot[data-slot="zag1"] .carta:not(.vazia)'), { oque: 'a carta no ZAG' });
+
+    const slot = $('.slot[data-slot="zag1"]');
+    return {
+      marcouAlternativa: marcada,
+      acusaImproviso: !!slot.querySelector('.aviso-posicao'),
+      pilulaEmAmbar: !!slot.querySelector('.pilula.fora'),
+      ok: marcada && !slot.querySelector('.aviso-posicao') && !slot.querySelector('.pilula.fora'),
+    };
+  }],
+
+  ['as ações de confirmar não dependem de ler texto', async () => {
+    // um descartável, para o teste poder excluir de verdade
+    toque($('.carta-nova'));
+    await ate(() => $('#radar'), { oque: 'a ficha' });
+    escrever($('#in-apelido'), 'DESCARTAVEL');
+    toque($('.chip-pos[data-pos="MC"]'));
+    await espera(250);
+    deslizar('#salvar-jogador');
+    await espera(1500);
+    if ($('#revelacao')?.classList.contains('aberta')) { toque($('#revelacao')); await espera(800); }
+
+    const antes = $$('.item-trilho').length;
+    const alvo = await ate(() => $$('.item-trilho:not(.escalado)')
+      .find((el) => el.textContent.includes('DESCARTAVEL')), { oque: 'o descartável' });
+    toque(alvo);
+    await ate(() => $('.acoes-carta button[data-acao="excluir"]'), { oque: 'as ações da carta' });
+    toque($('.acoes-carta button[data-acao="excluir"]'));
+    await ate(() => $('#dialogo-fundo').classList.contains('aberto'), { oque: 'o diálogo' });
+
+    const nao = $('#dialogo-nao'), sim = $('#dialogo-sim');
+    const medido = {
+      textoNosBotoes: [nao.textContent.trim(), sim.textContent.trim()],
+      temIcone: [!!nao.querySelector('svg'), !!sim.querySelector('svg')],
+      rotuloParaLeitorDeTela: [nao.getAttribute('aria-label'), sim.getAttribute('aria-label')],
+    };
+
+    toque(nao);                       // cancelar não pode excluir
+    await espera(500);
+    const depoisDeCancelar = $$('.item-trilho').length;
+
+    return {
+      ...medido, antes, depoisDeCancelar,
+      ok: medido.textoNosBotoes.join('') === ''
+          && medido.temIcone[0] && medido.temIcone[1]
+          && !!medido.rotuloParaLeitorDeTela[0] && !!medido.rotuloParaLeitorDeTela[1]
+          && depoisDeCancelar === antes,
     };
   }],
 

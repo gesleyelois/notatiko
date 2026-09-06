@@ -21,14 +21,27 @@ do navegador.
 
 ## Como as notas funcionam
 
-A nota de um jogador é a média das seis características **ponderada pela posição
-em que ele está jogando**: um zagueiro vale pela defesa e pelo físico; um
-atacante, pela finalização e pelo ritmo. Por isso escalar alguém fora de posição
-custa nota de verdade — e goleiro em campo (ou jogador de linha no gol) sofre uma
-penalidade extra, porque defender gol é outro ofício.
+São **dois ofícios, não um**. O jogador de linha tem Ritmo, Finalização, Passe,
+Drible, Defesa e Físico; o goleiro tem Elasticidade, Manejo, Reflexos,
+Posicionamento, Reposição e Velocidade. "Defesa" de um zagueiro é marcação; de
+um goleiro é defender chute — eram duas coisas medidas pelo mesmo número.
+
+A nota é a média das seis **ponderada pela posição em que ele está jogando**: um
+zagueiro vale pela defesa e pelo físico; um atacante, pela finalização e pelo
+ritmo. Escalar fora de posição custa nota de verdade.
+
+Cruzando a fronteira do gol não há atributo em comum, então a nota vira uma
+aproximação declarada: um jogador de linha no gol vale pelo que leva para lá
+(defesa, físico e ritmo) e um goleiro na linha, pela saída e pelo pé — os dois
+com desconto pesado, porque improvisar no ofício alheio custa caro.
+
+Cada jogador pode ter até **duas segundas funções**. Jogar numa delas não conta
+como improviso e quase não custa sintonia. A fronteira do gol não se atravessa:
+goleiro não é alternativa de ninguém, nem ninguém é alternativa de goleiro.
 
 - **Força** — média das notas dos 11 nas posições em que foram escalados.
-- **Sintonia** — o quanto o time joga onde deveria. Posição exata vale 100%, mesmo setor 60%, setor vizinho 25%.
+- **Sintonia** — o quanto o time joga onde sabe. Posição principal vale 100%,
+  uma segunda função 85%, mesmo setor 60%, setor vizinho 25%.
 
 ## Rodando localmente
 
