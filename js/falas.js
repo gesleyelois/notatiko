@@ -13,58 +13,63 @@
 export const FALAS = {
   // criação de jogador, conforme a nota
   fenomeno:  ['Que fenômeno!', 'Craque demais!', 'Que jogador!',
-              'Esse é de outro planeta!', 'Fora de série!', 'Joia rara!',
-              'Que contratação, hein!', 'Esse decide sozinho.', 'Craque de verdade.'],
+              'Esse é de outro planeta!', 'Esse aí é fora de série!',
+              'Achou uma joia, hein!', 'Que contratação, hein!',
+              'Esse decide sozinho.', 'Craque de verdade, esse.'],
   craque:    ['Que craque!', 'Baita reforço!', 'Show de bola!',
-              'Esse joga muito.', 'Peça de primeira.', 'Chegou para brilhar.',
-              'Titular na hora.', 'Que achado!'],
-  reforco:   ['Reforço de peso!', 'Chegou gente boa!', 'Boa contratação!',
-              'Vai ajudar bastante.', 'Time mais forte.', 'Peça útil demais.',
-              'Bom nome.', 'Chegou para somar.'],
+              'Esse joga muito.', 'Esse é de primeira, hein.',
+              'Esse chegou pra brilhar.', 'Titular na hora.', 'Que achado!'],
+  reforco:   ['Baita reforço, hein!', 'Chegou gente boa!', 'Boa contratação!',
+              'Esse resolve, viu.', 'O time cresceu com esse.',
+              'Útil demais, esse cara.', 'Bom nome, hein.', 'Chegou pra jogar.'],
   elenco:    ['Mais um pro elenco!', 'Bem-vindo ao clube!', 'Tá no grupo!',
-              'Vai ter chance.', 'Começa por baixo.', 'Todo elenco precisa.',
-              'Bem-vindo!', 'Um a mais no vestiário.'],
+              'Vai ter chance.', 'Começa por baixo.',
+              'Todo elenco precisa de um desses.', 'Se ajeita aí no vestiário.',
+              'Um a mais no vestiário.'],
 
   // escalação
-  completo:  ['Time completo!', 'Escalação definida!', 'Onze em campo!',
-              'Tá escalado!', 'Time montado.', 'Prontos pro apito.',
-              'Fechou o time!', 'Onze na linha.'],
-  tatica:    ['Mudança tática!', 'Time reposicionado!', 'Nova formação!',
-              'Mexeu no desenho.', 'Outro esquema.', 'Time redesenhado.',
-              'Trocou a formação.', 'Nova arrumação.'],
+  completo:  ['Time completo!', 'Escalou, hein!', 'Botou os onze!',
+              'Tá escalado!', 'Time montado, hein.', 'Prontos pro apito.',
+              'Fechou o time!', 'Agora é jogar.'],
+  tatica:    ['Mexeu no time, hein.', 'Todo mundo trocou de lugar.',
+              'Formação nova, então.', 'Mexeu no desenho.', 'Outro esquema.',
+              'Redesenhou tudo.', 'Cansou do esquema antigo?',
+              'Arrumou de outro jeito.'],
 
   // troca que melhora o time
   melhorou:  ['Agora sim, hein!', 'Boa escolha!', 'Assim o time cresce.',
               'Decisão de técnico!', 'Gostei dessa.', 'Reforçou de verdade!',
-              'Melhorou muito.', 'Essa foi certeira.', 'Subiu o nível.', 'Aí sim!'],
+              'Melhorou demais, hein.', 'Essa foi certeira.', 'Subiu o nível.',
+              'Aí sim!'],
 
   // troca que piora — provoca, sem ofender
   piorou:    ['Tem certeza?', 'Pensa bem, hein.', 'Esse aí é melhor?',
               'A torcida não vai gostar.', 'Coragem, hein!',
               'Olha o que você tá fazendo!', 'Tá arriscando.',
-              'Enfraqueceu o time.', 'Explica essa.', 'Duvido que dê certo.'],
+              'Enfraqueceu, hein.', 'Explica essa.', 'Duvido que dê certo.'],
 
   // jogador fora da posição natural
   improviso: ['Improvisou, hein.', 'Ele joga aí mesmo?', 'Vai ter que se virar.',
-              'Fora da posição dele.', 'Isso é improviso.',
+              'Não é ali que ele joga.', 'Improviso puro, isso aí.',
               'Vai aprender jogando.', 'Não é a casa dele.'],
 
   // goleiro na linha ou jogador de linha no gol
   golForaDeCasa: ['Goleiro na linha? Ousado!', 'Isso vai dar história.',
-                  'No gol, com as mãos, era melhor.', 'Goleiro é outro ofício.',
+                  'No gol, com as mãos, era melhor.',
+                  'Goleiro é outra profissão, hein.',
                   'Isso não vai acabar bem.', 'Coragem para inventar essa.'],
 
   // tirado de campo, mas segue no elenco
-  tirou:     ['Vai pro banco.', 'Saiu do time.', 'Fora da escalação.',
-              'Descansa um pouco.', 'Sai de campo.', 'Perdeu a vaga.',
-              'Vai esperar a chance.'],
+  tirou:     ['Vai pro banco.', 'Tá fora, esse.', 'Não joga mais hoje.',
+              'Descansa um pouco.', 'Deu o que tinha que dar.',
+              'Perdeu a vaga.', 'Vai esperar a chance.'],
 
   // jogador excluído do elenco
-  dispensa:  ['Dispensado!', 'Fim de contrato.', 'Saiu do clube.',
-              'Rescindiu.', 'Não faz mais parte.', 'Fim de linha.'],
+  dispensa:  ['Dispensado!', 'Fim de contrato.', 'Foi embora, esse.',
+              'Rasgaram o contrato.', 'Esse não volta mais.', 'Fim de linha.'],
 
   // tocou numa carta de quem já está escalado
-  jaEmCampo: ['Esse já tá jogando.', 'Ele já está em campo.', 'Já é titular.',
+  jaEmCampo: ['Esse já tá jogando.', 'Esse aí tá lá dentro.', 'Já é titular.',
               'Esse aí já entrou.', 'Já tá escalado.', 'Esse já é do time.'],
 
   // parado com o time incompleto — cutuca, sem cobrar
@@ -87,6 +92,7 @@ export const FALAS = {
                    'Gostou do que você fez?',
                    'Se tá bom, deixa quieto.'],
 };
+
 
 
 // Nome do arquivo de áudio de cada frase: chave + posição na lista.

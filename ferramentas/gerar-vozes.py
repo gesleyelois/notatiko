@@ -158,19 +158,32 @@ def main():
         falas = {g: falas[g] for g in grupos}
 
     SAIDA.mkdir(parents=True, exist_ok=True)
-    indice = {}
+
+    # O que o índice anterior dizia de cada arquivo. Trocar o texto de uma
+    # frase sem trocar a posição dela deixaria o mp3 antigo no lugar, dizendo
+    # outra coisa — o nome do arquivo é grupo+posição, não o texto.
+    try:
+        antes = json.loads((SAIDA / 'indice.json').read_text(encoding='utf-8'))
+        texto_anterior = {nome: txt for txt, nome in antes.get('frases', {}).items()}
+    except (OSError, ValueError):
+        texto_anterior = {}
+
     caracteres = 0
     gerados = 0
+    refeitos = 0
 
     for grupo, lista in falas.items():
         for i, texto in enumerate(lista):
             nome = f'{grupo}-{i + 1}'
             destino = SAIDA / f'{nome}.mp3'
-            indice[texto] = nome
 
-            if destino.exists() and not args.refazer:
+            mudou = nome in texto_anterior and texto_anterior[nome] != texto
+            if destino.exists() and not args.refazer and not mudou:
                 print(f'  = {nome:<16} (já existe)')
                 continue
+            if mudou:
+                refeitos += 1
+                print(f'  ~ {nome:<16} texto mudou: {texto_anterior[nome]!r}')
 
             audio = pedir(
                 f'/text-to-speech/{args.voz}?output_format={FORMATO}',
@@ -210,7 +223,8 @@ def main():
 
     no_catalogo = sum(len(v) for v in todas.values())
     total = sum(f.stat().st_size for f in SAIDA.glob('*.mp3'))
-    print(f'\n{gerados} novos · {caracteres} caracteres consumidos')
+    print(f'\n{gerados - refeitos} novos · {refeitos} refeitos por mudança de '
+          f'texto · {caracteres} caracteres consumidos')
     print(f'{len(completo)}/{no_catalogo} frases do catálogo com áudio '
           f'· {total // 1024} KB no total')
     if len(completo) < no_catalogo:

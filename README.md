@@ -115,7 +115,7 @@ calar a música e continuar ouvindo o narrador.
   time pela metade, o narrador cutuca. Ela toca por dois caminhos, nesta
   ordem:
 
-  1. as gravações de `audio/falas/` — 117 arquivos, 994 KB. Havendo
+  1. as gravações de `audio/falas/` — 117 arquivos, 1 MB. Havendo
      gravações, o sorteio só considera frases que têm áudio: acrescentar
      frase ao catálogo nunca mistura a voz gravada com a do aparelho no meio
      da mesma sessão. Mesmo timbre em qualquer aparelho, sem depender do sistema
@@ -139,10 +139,14 @@ python3 ferramentas/gerar-vozes.py --voz <id>     # gera audio/falas/
 A chave também pode vir de `ELEVENLABS_API_KEY`, desde que exportada na
 mesma shell que roda o script.
 
-São ~2100 caracteres no total, bem dentro da cota gratuita mensal do
-ElevenLabs. O script pula o que já existe (use `--refazer` para regerar),
-corta o silêncio das pontas e nivela o volume entre as frases. O índice
-lista só o que tem mp3 no disco.
+São ~2300 caracteres no total, bem dentro da cota gratuita mensal do
+ElevenLabs. O script pula o que já existe, corta o silêncio das pontas e
+nivela o volume entre as frases. O índice lista só o que tem mp3 no disco.
+
+Trocar o **texto** de uma frase sem mudar a posição dela é o caso perigoso:
+o arquivo se chama grupo+posição, então o mp3 antigo continuaria no lugar
+dizendo outra coisa. O script compara o catálogo com o índice anterior e
+regera só o que mudou (`--refazer` força tudo).
 
 **Licença:** áudio gerado no plano gratuito do ElevenLabs vem com restrição
 de uso comercial e pedido de atribuição. Confira os termos do seu plano

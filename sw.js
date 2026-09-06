@@ -1,4 +1,4 @@
-const CACHE_NAME = 'notatiko-v27';
+const CACHE_NAME = 'notatiko-v29';
 const ARQUIVOS_ESSENCIAIS = [
   './',
   './index.html',
@@ -43,9 +43,11 @@ async function guardarEmLotes(cache, arquivos, tamanho = 6) {
   }
 
   // repescagem, uma por vez: o que caiu por concorrência costuma passar aqui
+  const teimosos = [];
   for (const a of falharam) {
-    await cache.add(a).catch(() => { /* sem essa fala; a voz do aparelho cobre */ });
+    await cache.add(a).catch(() => teimosos.push(a));
   }
+  return teimosos;
 }
 
 // As gravações da narração são opcionais: se ainda não foram geradas, o app
@@ -68,11 +70,26 @@ async function guardarNarracao(cache) {
   }
 }
 
+/* Os essenciais também vão em lotes — e a instalação falha se algum ficar
+   de fora.
+
+   Um addAll com os 25 de uma vez derrubou a instalação numa medição local:
+   o cache parou em 24 itens SEM o index.html, e o worker ativou assim
+   mesmo. Service Worker ativo com cache incompleto é pior que nenhum: ele
+   passa a servir um app que não abre offline. Melhor falhar e tentar de
+   novo no próximo carregamento.                                           */
+async function guardarEssenciais(cache) {
+  const faltando = await guardarEmLotes(cache, ARQUIVOS_ESSENCIAIS);
+  if (faltando.length) {
+    throw new Error('essenciais fora do cache: ' + faltando.join(', '));
+  }
+}
+
 self.addEventListener('install', (evento) => {
   evento.waitUntil(
     caches.open(CACHE_NAME)
       .then(async (cache) => {
-        await cache.addAll(ARQUIVOS_ESSENCIAIS);
+        await guardarEssenciais(cache);
         await guardarNarracao(cache);
       })
       .then(() => self.skipWaiting())
