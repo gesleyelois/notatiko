@@ -66,6 +66,26 @@ export const FALAS = {
   // tocou numa carta de quem já está escalado
   jaEmCampo: ['Esse já tá jogando.', 'Ele já está em campo.', 'Já é titular.',
               'Esse aí já entrou.', 'Já tá escalado.', 'Esse já é do time.'],
+
+  // parado com o time incompleto — cutuca, sem cobrar
+  paradoIncompleto: ['Tá difícil escalar, hein?',
+                     'Escolhe logo, o jogo já vai começar.',
+                     'A torcida tá esperando, hein.',
+                     'Ninguém disse que ser técnico era fácil.',
+                     'Falta gente em campo, chefe.',
+                     'O time não se escala sozinho, né.',
+                     'Tá pensando ou tá travado?',
+                     'Bora, o vestiário tá cheio.'],
+
+  // parado com os onze prontos — provoca de leve
+  paradoCompleto: ['Time montado. Agora é rezar.',
+                   'Tá bom assim? Pensa direito.',
+                   'Esse time ganha de quem?',
+                   'Tá admirando a obra, é?',
+                   'Já pode apitar, então.',
+                   'Bonito o time, hein.',
+                   'Gostou do que você fez?',
+                   'Se tá bom, deixa quieto.'],
 };
 
 

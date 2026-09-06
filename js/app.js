@@ -683,10 +683,23 @@ function acoesCartaHTML(paraEsquerda) {
     </div>`;
 }
 
-function acoesCartaTrilhoHTML() {
+/* Vaga livre onde este jogador atua — a principal ou uma segunda função.
+
+   É o que decide se o botão de escalar aparece. Oferecer o atalho e depois
+   avisar que não dá é pedir para o usuário descobrir o "não" clicando.     */
+function vagaPara(j) {
+  const slots = slotsFormacao();
+  const livre = (s) => !estado.escalacao.slots[s.id];
+  return slots.find((s) => s.pos === j.posicao && livre(s))
+      || slots.find((s) => atuaEm(j, s.pos) && livre(s))
+      || null;
+}
+
+function acoesCartaTrilhoHTML(j) {
+  const vaga = vagaPara(j);
   return `
     <div class="acoes-carta">
-      <button data-acao="escalar" aria-label="Escalar em campo">${ic.campo}</button>
+      ${vaga ? `<button data-acao="escalar" aria-label="Escalar como ${vaga.pos}">${ic.campo}</button>` : ''}
       <button data-acao="editar" aria-label="Editar jogador">${ic.lapis}</button>
       <button data-acao="excluir" aria-label="Excluir do elenco">${ic.lixeira}</button>
     </div>`;
@@ -1019,7 +1032,7 @@ function renderElenco() {
     // Antes só havia o apagamento, que diz "indisponível" mas não diz por quê.
     el.innerHTML = cartaHTML(j)
       + (emCampo ? `<span class="selo-em-campo" aria-label="Em campo">${ic.campo}</span>` : '')
-      + (selecionado ? acoesCartaTrilhoHTML() : '');
+      + (selecionado ? acoesCartaTrilhoHTML(j) : '');
 
     if (emCampo) {
       el.addEventListener('click', () => {
@@ -1249,7 +1262,10 @@ async function tirarDoTime(slotId) {
 
 async function escalarAutomatico(jogador) {
   const slots = slotsFormacao();
-  const vazio = slots.find((s) => s.pos === jogador.posicao && !estado.escalacao.slots[s.id])
+  // preferência: a casa dele, depois uma segunda função, depois o setor,
+  // e só então qualquer vaga — este último caso vem da criação do jogador,
+  // onde escalar em algum lugar é melhor que não escalar
+  const vazio = vagaPara(jogador)
     || slots.find((s) => grupoDe(s.pos) === grupoDe(jogador.posicao) && !estado.escalacao.slots[s.id])
     || slots.find((s) => !estado.escalacao.slots[s.id]);
   if (!vazio) { toast('Os 11 já estão em campo. Tire alguém antes.'); return; }
@@ -2117,9 +2133,58 @@ async function migrarGoleiros(jogadores) {
   return jogadores;
 }
 
+/* ---------- o narrador cutuca quando o técnico trava ----------
+
+   Silêncio prolongado com o time pela metade é o momento em que a resenha
+   cabe. A cutucada é espaçada e finita: quatro no máximo antes de calar de
+   vez, porque narrador que não para de falar deixa de ter graça. Qualquer
+   toque zera o relógio, e nada é dito com uma ficha aberta — ali a pessoa
+   está ocupada, não parada.                                               */
+
+const ESPERA_PRIMEIRA = 45000;   // o primeiro comentário demora mais
+const ESPERA_SEGUINTE = 75000;
+const MAX_CUTUCADAS = 4;
+
+let relogioParado = null;
+let cutucadas = 0;
+
+function ocupado() {
+  return $('#folha').classList.contains('aberta')
+      || $('#dialogo-fundo').classList.contains('aberto')
+      || $('#revelacao').classList.contains('aberta')
+      || !!$('#painel-som');
+}
+
+function comentarParado() {
+  if (ocupado() || !estado.audio.vozes || cutucadas >= MAX_CUTUCADAS) return agendarParado();
+  const completo = idsEscalados().size >= slotsFormacao().length;
+  narrador.falar(completo ? 'paradoCompleto' : 'paradoIncompleto');
+  cutucadas++;
+  agendarParado();
+}
+
+function agendarParado() {
+  clearTimeout(relogioParado);
+  if (cutucadas >= MAX_CUTUCADAS) return;
+  relogioParado = setTimeout(comentarParado, cutucadas ? ESPERA_SEGUINTE : ESPERA_PRIMEIRA);
+}
+
+function acordar() {
+  cutucadas = 0;               // mexeu: a contagem recomeça
+  agendarParado();
+}
+
 /* =========================================================
    Eventos globais
    ========================================================= */
+
+// qualquer sinal de vida zera o relógio da resenha
+for (const evento of ['pointerdown', 'keydown']) {
+  document.addEventListener(evento, acordar, { passive: true });
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) clearTimeout(relogioParado); else acordar();
+});
 
 $('#btn-time').addEventListener('click', folhaTime);
 $('#btn-som').addEventListener('click', abrirPainelSom);
@@ -2168,6 +2233,7 @@ async function iniciar() {
 
   renderTudo();
   prepararDesbloqueioDeAudio();
+  agendarParado();
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});

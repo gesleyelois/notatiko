@@ -54,6 +54,13 @@ function deslizar(seletor) {
   ev('pointerup', r.right - 6);
 }
 
+// tira a seleção tocando fora das cartas
+function limparSelecaoTocandoFora() {
+  const g = $('#gramado');
+  const r = g.getBoundingClientRect();
+  g.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: r.left + 3, clientY: r.top + 3 }));
+}
+
 // puxa a ficha para baixo pela alça
 function puxarFichaParaBaixo(px) {
   const alca = $('#folha-alca');
@@ -438,6 +445,62 @@ const TESTES = [
     };
   }],
 
+  ['o atalho de escalar só aparece quando há vaga para a posição', async () => {
+    // o CURINGA é VOL com ZAG como segunda função, e já está escalado no ZAG.
+    // Vamos usar o DESCARTAVEL (MC), cuja vaga está livre.
+    const livre = await ate(() => $$('.item-trilho:not(.escalado)')[0], { oque: 'uma carta livre' });
+    toque(livre);
+    await ate(() => $('.acoes-carta'), { oque: 'as ações da carta' });
+    const comVaga = $$('.acoes-carta button').map((b) => b.dataset.acao);
+    const rotulo = $('.acoes-carta button[data-acao="escalar"]')?.getAttribute('aria-label');
+    limparSelecaoTocandoFora();
+    await espera(400);
+
+    // agora enche o campo e confere que o atalho some
+    const antes = $$('.slot .carta.vazia').length;
+    for (const slot of $$('.slot')) {
+      if (!slot.querySelector('.carta.vazia')) continue;
+      const disponivel = $$('.item-trilho:not(.escalado)')[0];
+      if (!disponivel) break;
+      toque(slot);
+      await espera(150);
+      toque(disponivel);
+      await espera(250);
+    }
+    const sobrou = $$('.item-trilho:not(.escalado)')[0];
+    let semVaga = null;
+    if (sobrou) {
+      toque(sobrou);
+      await ate(() => $('.acoes-carta'), { oque: 'as ações' });
+      semVaga = $$('.acoes-carta button').map((b) => b.dataset.acao);
+      limparSelecaoTocandoFora();
+      await espera(300);
+    }
+    return {
+      comVagaLivre: comVaga, rotuloDizOnde: rotulo, semVagaParaAPosicao: semVaga,
+      vagasAntes: antes,
+      ok: comVaga.includes('escalar') && /Escalar como \w+/.test(rotulo || '')
+          && (semVaga === null || !semVaga.includes('escalar')),
+    };
+  }],
+
+  ['o narrador tem o que dizer quando o técnico trava', async () => {
+    const falas = (await import('../js/falas.js')).FALAS;
+    const m = await import('../js/audio.js');
+    const grupos = ['paradoIncompleto', 'paradoCompleto'];
+    const semAudio = [];
+    for (const g of grupos) for (const t of falas[g] || []) if (!m.narrador.gravacoes?.[t]) semAudio.push(t);
+    return {
+      incompleto: falas.paradoIncompleto?.length ?? 0,
+      completo: falas.paradoCompleto?.length ?? 0,
+      totalNoCatalogo: Object.values(falas).reduce((a, v) => a + v.length, 0),
+      semGravacao: semAudio,
+      ok: (falas.paradoIncompleto?.length ?? 0) >= 6
+          && (falas.paradoCompleto?.length ?? 0) >= 6
+          && semAudio.length === 0,
+    };
+  }],
+
   ['quem está em campo ganha selo, e o aviso virou voz', async () => {
     const m = await import('../js/audio.js');
     const escalado = await ate(() => $('.item-trilho.escalado'), { oque: 'uma carta escalada' });
@@ -466,8 +529,10 @@ const TESTES = [
       temSelo: !!selo, semSeloNoLivre: livre ? !livre.querySelector('.selo-em-campo') : true,
       opacidades, disse: dito, semTorrada: !torrada,
       frasesNoCatalogo: Object.values(falas).reduce((a, v) => a + v.length, 0),
+      // conteúdo, não contagem: uma narração atrasada da ação anterior pode
+      // cair nesta janela sem que nada esteja errado
       ok: !!selo && opacidades.selo === '1' && +opacidades.carta < .5
-          && !torrada && dito.length === 1 && falas.jaEmCampo.includes(dito[0]),
+          && !torrada && dito.some((t) => falas.jaEmCampo.includes(t)),
     };
   }],
 

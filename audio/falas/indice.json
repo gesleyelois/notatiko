@@ -102,6 +102,22 @@
     "Já é titular.": "jaEmCampo-3",
     "Esse aí já entrou.": "jaEmCampo-4",
     "Já tá escalado.": "jaEmCampo-5",
-    "Esse já é do time.": "jaEmCampo-6"
+    "Esse já é do time.": "jaEmCampo-6",
+    "Tá difícil escalar, hein?": "paradoIncompleto-1",
+    "Escolhe logo, o jogo já vai começar.": "paradoIncompleto-2",
+    "A torcida tá esperando, hein.": "paradoIncompleto-3",
+    "Ninguém disse que ser técnico era fácil.": "paradoIncompleto-4",
+    "Falta gente em campo, chefe.": "paradoIncompleto-5",
+    "O time não se escala sozinho, né.": "paradoIncompleto-6",
+    "Tá pensando ou tá travado?": "paradoIncompleto-7",
+    "Bora, o vestiário tá cheio.": "paradoIncompleto-8",
+    "Time montado. Agora é rezar.": "paradoCompleto-1",
+    "Tá bom assim? Pensa direito.": "paradoCompleto-2",
+    "Esse time ganha de quem?": "paradoCompleto-3",
+    "Tá admirando a obra, é?": "paradoCompleto-4",
+    "Já pode apitar, então.": "paradoCompleto-5",
+    "Bonito o time, hein.": "paradoCompleto-6",
+    "Gostou do que você fez?": "paradoCompleto-7",
+    "Se tá bom, deixa quieto.": "paradoCompleto-8"
   }
 }

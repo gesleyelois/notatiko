@@ -109,12 +109,13 @@ ffmpeg -y -i trilha-bruta.wav -codec:a libmp3lame -b:a 128k -ac 1 audio/trilha.m
 Trilha, efeitos e narração têm chaves separadas no painel do som: dá para
 calar a música e continuar ouvindo o narrador.
 
-- **Narração** — 101 frases para os momentos do time (criou jogador, trocou
+- **Narração** — 117 frases para os momentos do time (criou jogador, trocou
   para melhor, trocou para pior, improvisou na posição, mudou a tática,
-  dispensou, tocou em quem já está escalado). Ela toca por dois caminhos,
-  nesta ordem:
+  dispensou, tocou em quem já está escalado) e para o silêncio: parado com o
+  time pela metade, o narrador cutuca. Ela toca por dois caminhos, nesta
+  ordem:
 
-  1. as gravações de `audio/falas/` — 101 arquivos, 813 KB. Havendo
+  1. as gravações de `audio/falas/` — 117 arquivos, 994 KB. Havendo
      gravações, o sorteio só considera frases que têm áudio: acrescentar
      frase ao catálogo nunca mistura a voz gravada com a do aparelho no meio
      da mesma sessão. Mesmo timbre em qualquer aparelho, sem depender do sistema
@@ -138,7 +139,7 @@ python3 ferramentas/gerar-vozes.py --voz <id>     # gera audio/falas/
 A chave também pode vir de `ELEVENLABS_API_KEY`, desde que exportada na
 mesma shell que roda o script.
 
-São ~1700 caracteres no total, bem dentro da cota gratuita mensal do
+São ~2100 caracteres no total, bem dentro da cota gratuita mensal do
 ElevenLabs. O script pula o que já existe (use `--refazer` para regerar),
 corta o silêncio das pontas e nivela o volume entre as frases. O índice
 lista só o que tem mp3 no disco.
