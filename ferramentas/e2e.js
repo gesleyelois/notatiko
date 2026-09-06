@@ -31,9 +31,34 @@ function toque(el) {
   el.click();
 }
 
-function escrever(input, texto) {
-  input.value = texto;
-  input.dispatchEvent(new Event('input', { bubbles: true }));
+// os campos são elementos editáveis, não <input>: quem escreve é o texto
+function escrever(campo, texto) {
+  campo.textContent = texto;
+  campo.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+// confirma o deslizar arrastando o punho de ponta a ponta
+function deslizar(seletor) {
+  const el = $(seletor);
+  const r = el.getBoundingClientRect();
+  const y = r.top + r.height / 2;
+  const ev = (t, x) => el.dispatchEvent(new PointerEvent(t, { bubbles: true, pointerId: 5, clientX: x, clientY: y }));
+  ev('pointerdown', r.left + 24);
+  ev('pointermove', r.left + r.width * 0.5);
+  ev('pointermove', r.right - 6);
+  ev('pointerup', r.right - 6);
+}
+
+// puxa a ficha para baixo pela alça
+function puxarFichaParaBaixo(px) {
+  const alca = $('#folha-alca');
+  const r = alca.getBoundingClientRect();
+  const x = r.left + r.width / 2;
+  const ev = (t, y) => alca.dispatchEvent(new PointerEvent(t, { bubbles: true, pointerId: 6, clientX: x, clientY: y }));
+  ev('pointerdown', r.top);
+  ev('pointermove', r.top + px / 2);
+  ev('pointermove', r.top + px);
+  ev('pointerup', r.top + px);
 }
 
 // arrasta uma ponta do radar até uma fração do raio
@@ -83,45 +108,72 @@ const TESTES = [
     };
   }],
 
-  ['funda o clube pelo escudo do placar', async () => {
+  ['funda o clube deslizando, pelo escudo do placar', async () => {
     toque($('#btn-time'));
     const campo = await ate(() => $('#in-nome-time'), { oque: 'a ficha do clube' });
     escrever(campo, 'FURIA F.C');
-    toque($('#salvar-time'));
+    deslizar('#salvar-time');
     await ate(() => $('#topo-nome').textContent === 'FURIA F.C', { oque: 'o nome no placar' });
     return { nomeNoPlacar: $('#topo-nome').textContent, ok: true };
   }],
 
-  ['nenhum campo de texto convida o preenchimento automático', async () => {
+  ['não existe campo de formulário para o iOS querer preencher', async () => {
     toque($('#btn-time'));
     await ate(() => $('#in-nome-time'));
-    const campos = $$('.folha input[type=text], .folha input:not([type])');
-    const faltando = campos
-      .filter((c) => c.getAttribute('autocomplete') !== 'off' || c.getAttribute('spellcheck') !== 'false')
-      .map((c) => c.id);
-    toque($('#folha-fechar'));
+    // a barra de preenchimento do iOS aparece porque o campo é <input>.
+    // Se não há input, não há o que a Apple ofereça preencher.
+    const inputsDeTexto = $$('.folha input').filter((i) => i.type !== 'file');
+    const editaveis = $$('.folha [contenteditable]');
+    const escreveNoEditavel = (() => {
+      escrever($('#in-nome-time'), 'TESTE DE ESCRITA');
+      return $('#in-nome-time').textContent === 'TESTE DE ESCRITA';
+    })();
+    puxarFichaParaBaixo(400);
+    await espera(600);
+    return {
+      inputsDeTexto: inputsDeTexto.length, editaveis: editaveis.length, escreveNoEditavel,
+      ok: inputsDeTexto.length === 0 && editaveis.length > 0 && escreveNoEditavel,
+    };
+  }],
+
+  ['arrastar a ficha para baixo fecha, sem precisar alcançar o X', async () => {
+    const fechou = !$('#folha').classList.contains('aberta');
+    toque($('#btn-time'));
+    await ate(() => $('#folha').classList.contains('aberta'), { oque: 'a ficha abrir' });
+    puxarFichaParaBaixo(20);                       // puxão curto: não fecha
     await espera(400);
-    return { camposVerificados: campos.map((c) => c.id), semProtecao: faltando, ok: campos.length > 0 && faltando.length === 0 };
+    const segurouOCurto = $('#folha').classList.contains('aberta');
+    puxarFichaParaBaixo(500);                      // puxão longo: fecha
+    await ate(() => !$('#folha').classList.contains('aberta'), { oque: 'a ficha fechar' });
+    return { fechouAntes: fechou, ignorouPuxaoCurto: segurouOCurto, ok: segurouOCurto };
   }],
 
   ['cria jogador pela carta, sem formulário nenhum', async () => {
     toque($('.carta-nova'));
     await ate(() => $('#radar'), { oque: 'a ficha do jogador' });
     const vestigios = {
-      sliders: $$('.folha input[type=range]').length,
+      inputs: $$('.folha input').filter((i) => i.type !== 'file').length,
       rotulos: $$('.folha label:not(.carta-foto):not(.credencial-foto)').length,
       areaTracejada: $$('.folha .upload').length,
+      botaoCTA: $$('.folha-rodape .btn-acento').length,
     };
+    // a posição não pode vir escolhida: um ATA pré-marcado fazia o jogador
+    // nascer atacante por descuido
+    const posicaoLimpa = $$('.chip-pos.ativa').length === 0;
+    const pedeAPosicao = $('#nome-posicao').classList.contains('pedindo');
+
     escrever($('#in-apelido'), 'FOGUINHO');
     toque($('.chip-pos[data-pos="ATA"]'));
-    await espera(200);
+    await espera(250);
     return {
-      ...vestigios,
+      ...vestigios, posicaoLimpa, pedeAPosicao,
       nomeEditadoNaCarta: !!$('#previa .entrada-nome'),
       fotoEditadaNaCarta: !!$('#previa .carta-foto.editavel'),
+      confirmaDeslizando: !!$('.deslizar'),
       posicaoPorExtenso: $('#nome-posicao').textContent,
-      ok: vestigios.sliders === 0 && vestigios.rotulos === 0 && vestigios.areaTracejada === 0
-          && !!$('#previa .entrada-nome') && $('#nome-posicao').textContent === 'Atacante',
+      ok: vestigios.inputs === 0 && vestigios.rotulos === 0 && vestigios.areaTracejada === 0
+          && vestigios.botaoCTA === 0 && posicaoLimpa && pedeAPosicao
+          && !!$('.deslizar') && $('#nome-posicao').textContent === 'Atacante',
     };
   }],
 
@@ -141,8 +193,8 @@ const TESTES = [
     };
   }],
 
-  ['assina o contrato e a carta entra no elenco', async () => {
-    toque($('#salvar-jogador'));
+  ['assina o contrato deslizando e a carta entra no elenco', async () => {
+    deslizar('#salvar-jogador');
     await ate(() => $$('.item-trilho').length === 1, { oque: 'a carta no elenco' });
     await espera(1200);                 // deixa a revelação passar
     const rev = $('#revelacao');
@@ -179,7 +231,7 @@ const TESTES = [
     escrever($('#in-nome-membro'), 'SEU ZÉ');
     $('#in-nome-membro').focus();
     const focoMantido = document.activeElement.id === 'in-nome-membro';
-    toque($('#salvar-membro'));
+    deslizar('#salvar-membro');
     await ate(() => $$('.item-comissao').length === 1, { oque: 'a credencial no trilho' });
     return { nomeNaCredencial: naCredencial, focoMantido, naComissao: $$('.item-comissao').length,
              ok: naCredencial && focoMantido && $$('.item-comissao').length === 1 };
@@ -248,6 +300,37 @@ const TESTES = [
       camposDeFormulario: $$('input[type=range], select, textarea').length,
       ok: corpo.userSelect === 'none' && corpo.overscrollBehavior === 'none'
           && $$('input[type=range], select, textarea').length === 0,
+    };
+  }],
+
+  ['dá para calar a trilha e manter a narração', async () => {
+    const m = await import('../js/audio.js');
+    toque($('#btn-som'));
+    await ate(() => $('#painel-som'), { oque: 'o painel do som' });
+    const canais = $$('.canal').map((c) => c.dataset.canal);
+
+    // parte de um estado conhecido: as preferências ficam salvas entre
+    // sessões, então o teste não pode supor como o usuário deixou
+    for (const c of $$('.canal')) if (!c.classList.contains('ligado')) { toque(c); await espera(200); }
+    const todosLigados = $$('.canal.ligado').length === 3;
+
+    toque($('.canal[data-canal="trilha"]'));
+    await espera(500);
+    const depois = {
+      trilhaLigada: $('.canal[data-canal="trilha"]').classList.contains('ligado'),
+      trilhaTocando: m.trilha.tocando,
+      vozes: m.narrador.ligado,
+      efeitos: m.efeitos.ligado,
+    };
+    toque($('.canal[data-canal="trilha"]'));    // devolve como estava
+    await espera(300);
+    document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 8 }));
+    await espera(300);
+    return {
+      canais, partiuDeTodosLigados: todosLigados, aoCalarATrilha: depois,
+      ok: canais.length === 3 && todosLigados
+          && depois.trilhaLigada === false && depois.trilhaTocando === false
+          && depois.vozes === true && depois.efeitos === true,
     };
   }],
 

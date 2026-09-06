@@ -815,7 +815,7 @@ input, textarea, [contenteditable] {
   min-height: calc(var(--carta-trilho) * 1.4 + 22px);
   align-items: flex-start;
 }
-.trilho::-webkit-scrollbar { height: 4px; }
+/* a barra de rolagem some no reset: nada a reservar aqui */
 
 .item-trilho {
   flex-shrink: 0;
@@ -1039,7 +1039,11 @@ input, textarea, [contenteditable] {
   left: 50%;
   bottom: 0;
   width: min(100%, 560px);
-  height: 100dvh;
+  /* Antes eram 100dvh sempre, o que jogava o título e o X para o topo da
+     tela — fora do alcance do polegar num iPhone. Agora a ficha cresce só
+     até onde o conteúdo pede. */
+  height: auto;
+  max-height: 96dvh;
   transform: translate(-50%, 100%);
   border: none;
   box-shadow: var(--sombra);
@@ -1073,8 +1077,22 @@ input, textarea, [contenteditable] {
   pointer-events: none;
 }
 
-.folha-alca { padding: 9px 0 3px; display: flex; justify-content: center; cursor: grab; touch-action: none; }
-.folha-alca span { width: 40px; height: 4px; border-radius: 4px; background: var(--borda-clara); }
+.folha-alca {
+  padding: 12px 0 6px;
+  display: flex;
+  justify-content: center;
+  cursor: grab;
+  touch-action: none;
+}
+.folha-alca span {
+  width: 46px;
+  height: 5px;
+  border-radius: 4px;
+  background: var(--borda-clara);
+  transition: width .18s, background .18s;
+}
+.folha.arrastando .folha-alca span { width: 62px; background: var(--acento); }
+.folha-topo { touch-action: none; }
 
 .folha-topo {
   display: flex;
@@ -1116,6 +1134,7 @@ input, textarea, [contenteditable] {
   color: transparent;
 }
 
+.folha-corpo { touch-action: pan-y; }
 .folha-corpo {
   flex: 1;
   overflow-y: auto;
@@ -1581,7 +1600,7 @@ input[type=range]::-moz-range-thumb {
   position: relative;
   display: flex;
   justify-content: center;
-  padding: 10px 0 22px;
+  padding: 6px 0 14px;
 }
 .palco-carta::before {
   content: '';
@@ -1594,7 +1613,7 @@ input[type=range]::-moz-range-thumb {
   background: radial-gradient(closest-side, rgba(0, 232, 132, .22), transparent 72%);
   pointer-events: none;
 }
-.palco-carta .carta { font-size: 27px; position: relative; z-index: 1; }
+.palco-carta .carta { font-size: 25px; position: relative; z-index: 1; }
 
 /* =========================================================
    Cena do clube — escudo como protagonista
@@ -1657,6 +1676,9 @@ input[type=range]::-moz-range-thumb {
      ponta é cara de formulário */
   width: auto;
   max-width: 100%;
+  min-width: 4em;
+  min-height: 1em;
+  cursor: text;
   text-align: center;
   font-family: var(--fonte-cond);
   font-size: 25px;
@@ -1670,8 +1692,8 @@ input[type=range]::-moz-range-thumb {
   padding: 8px 4px;
   transition: border-color .18s;
 }
-.entrada-titulo:focus { border-color: var(--acento); }
-.entrada-titulo::placeholder { color: var(--texto-3); letter-spacing: 1px; }
+.entrada-titulo:focus { border-color: var(--acento); outline: none; }
+.entrada-titulo:empty::before { content: attr(data-vazio); color: var(--texto-3); }
 
 /* =========================================================
    Fora de posição — marcado na própria carta
@@ -2076,9 +2098,12 @@ input[type=range]::-moz-range-thumb {
   /* barra e cabeçalhos mais justos, para sobrar campo */
   :root { --hud-h: 58px; }
   .elenco-topo { padding-bottom: 4px; }
-  /* altura fixa (carta + respiro + os 4px da barra de rolagem) para que trocar
-     de aba não empurre o campo, já que só o elenco costuma transbordar. */
-  .trilho { min-height: calc(var(--carta-trilho) * 1.4 + 19px); padding-top: 8px; }
+  /* altura fixa (carta + respiro) para que trocar de aba não empurre o campo.
+     Enxuta ao osso: cada pixel devolvido aqui vira campo, que é quem cresce
+     com a sobra. */
+  .trilho { min-height: calc(var(--carta-trilho) * 1.4 + 10px); padding: 5px 12px 5px; }
+  .coluna-elenco { padding-top: 2px; padding-bottom: calc(2px + env(safe-area-inset-bottom)); }
+  .elenco-topo { padding-bottom: 2px; }
   .coluna-elenco { --carta-trilho: 72px; }
 }
 
@@ -2110,23 +2135,29 @@ input[type=range]::-moz-range-thumb {
 
 /* ---- nome escrito direto na carta ---- */
 
-/* Reseta só o que o navegador põe num input. A tipografia continua vindo
-   de .carta-nome / .credencial-nome — o campo tem que ser indistinguível do
-   texto que ele substitui. */
+/* Campo editável, não <input>: a tipografia continua vindo de .carta-nome /
+   .credencial-nome, e a marca d'água é desenhada por nós porque
+   ::placeholder não existe fora de formulário. */
 .entrada-nome {
   width: 100%;
+  min-height: 1em;
   background: none;
   border: 0;
-  border-radius: 0;
   padding: 0;
   margin: 0;
   text-align: center;
   color: inherit;
-  -webkit-appearance: none;
-  appearance: none;
+  cursor: text;
+  /* nome comprido não pode virar duas linhas dentro da carta */
+  white-space: nowrap;
+  overflow: hidden;
 }
-.entrada-nome::placeholder { color: currentColor; opacity: .35; }
+.entrada-nome:empty::before {
+  content: attr(data-vazio);
+  opacity: .35;
+}
 .entrada-nome:focus { outline: none; }
+.entrada-nome:focus:empty::before { opacity: .18; }
 /* o cursor piscando já diz que dá para escrever; o sublinhado reforça */
 .palco-carta .entrada-nome {
   box-shadow: 0 1px 0 rgba(0, 0, 0, .22);
@@ -2159,12 +2190,12 @@ input[type=range]::-moz-range-thumb {
 
 /* ---- radar ---- */
 
-.bloco-radar { margin-top: 6px; }
+.bloco-radar { margin-top: 2px; }
 
 .radar {
   display: block;
   width: 100%;
-  max-width: 296px;
+  max-width: 266px;
   margin: 0 auto;
   touch-action: none;          /* o arraste é nosso, não da rolagem */
   overflow: visible;
@@ -2212,7 +2243,7 @@ input[type=range]::-moz-range-thumb {
 }
 
 .dica-radar {
-  margin: 2px 0 0;
+  margin: 6px 0 0;
   text-align: center;
   font-size: 11px;
   letter-spacing: .3px;
@@ -2277,3 +2308,181 @@ input[type=range]::-moz-range-thumb {
 /* o pseudo não pode tapar o conteúdo desenhado por cima dele */
 .medalha b, .medalha span, .medalha svg,
 .aba .contador, .placa-tatica b, .placa-tatica small { z-index: 1; }
+
+/* posição ainda não escolhida: o texto pede em vez de informar */
+.nome-posicao.pedindo { color: var(--acento); }
+
+/* =========================================================
+   Confirmar deslizando
+
+   No lugar do botão de largura total com verbo no imperativo — que é a
+   assinatura visual de um formulário web. Deslizar pede intenção e devolve
+   uma sensação física ao ato de assinar.
+   ========================================================= */
+
+.deslizar {
+  --progresso: 0;
+  position: relative;
+  flex: 1;
+  height: 54px;
+  border-radius: 27px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: pan-y;
+  cursor: grab;
+  background: rgba(255, 255, 255, .05);
+  box-shadow: inset 0 0 0 1px var(--borda-clara);
+}
+.deslizar.arrastando { cursor: grabbing; }
+
+/* o verde vai enchendo o trilho conforme o punho anda */
+.deslizar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform-origin: left;
+  transform: scaleX(var(--progresso));
+  background: linear-gradient(90deg, var(--acento-escuro), var(--acento));
+  transition: transform .15s linear;
+}
+.deslizar.arrastando::before { transition: none; }
+
+.deslizar-texto {
+  position: relative;
+  font-family: var(--fonte-cond);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--texto-2);
+  pointer-events: none;
+  /* some conforme o punho avança: o trilho cheio já diz tudo */
+  opacity: calc(1 - var(--progresso) * 1.6);
+}
+
+.deslizar-punho {
+  position: absolute;
+  left: 4px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(150deg, #6effc0, var(--acento));
+  color: #04180f;
+  box-shadow: 0 3px 12px rgba(0, 232, 132, .45);
+  transition: transform .28s cubic-bezier(.2, .9, .3, 1);
+}
+.deslizar.arrastando .deslizar-punho { transition: none; }
+.deslizar-punho svg { width: 20px; height: 20px; }
+
+/* toque simples: mostra o caminho em vez de não fazer nada */
+.deslizar.convidando .deslizar-punho { animation: convidar .7s ease-out; }
+@keyframes convidar {
+  0%, 100% { transform: translateX(0); }
+  45%      { transform: translateX(16px); }
+}
+
+.deslizar.confirmado {
+  box-shadow: inset 0 0 0 1px var(--acento);
+  pointer-events: none;
+}
+.deslizar.confirmado::before { transform: scaleX(1); }
+.deslizar.confirmado .deslizar-texto { opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .deslizar::before, .deslizar-punho { transition: none; }
+  .deslizar.convidando .deslizar-punho { animation: none; }
+}
+
+/* =========================================================
+   Painel do som — três canais, um por linha
+
+   Encostado no glifo do placar, não numa ficha inteira: mexer no som é
+   ajuste rápido e não merece o peso de abrir uma folha.
+   ========================================================= */
+
+.painel-som {
+  position: absolute;
+  top: calc(100% - 4px);
+  right: 4px;
+  z-index: 20;
+  width: 218px;
+  padding: 5px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(18, 25, 33, .98), rgba(9, 13, 18, .98));
+  box-shadow: inset 0 0 0 1px var(--borda-clara), 0 14px 34px rgba(0, 0, 0, .6);
+  transform-origin: top right;
+  transform: scale(.9) translateY(-6px);
+  opacity: 0;
+  transition: transform .18s cubic-bezier(.2, .9, .3, 1), opacity .18s;
+}
+.painel-som.aberto { transform: none; opacity: 1; }
+
+.canal {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  text-align: left;
+  transition: background .15s;
+}
+.canal:active { background: rgba(255, 255, 255, .05); }
+.canal-txt { flex: 1; min-width: 0; }
+.canal-txt b {
+  display: block;
+  font-family: var(--fonte-cond);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+  color: var(--texto-3);
+  transition: color .15s;
+}
+.canal.ligado .canal-txt b { color: var(--texto); }
+.canal-txt small {
+  display: block;
+  font-size: 10px;
+  color: var(--texto-3);
+  opacity: .8;
+}
+
+/* a chave: um trilho com o botão correndo dentro */
+.canal-chave {
+  position: relative;
+  flex-shrink: 0;
+  width: 38px;
+  height: 22px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, .08);
+  box-shadow: inset 0 0 0 1px var(--borda);
+  transition: background .18s, box-shadow .18s;
+}
+.canal-chave::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--texto-3);
+  transition: transform .18s cubic-bezier(.2, .9, .3, 1), background .18s;
+}
+.canal.ligado .canal-chave {
+  background: rgba(0, 232, 132, .26);
+  box-shadow: inset 0 0 0 1px rgba(0, 232, 132, .5);
+}
+.canal.ligado .canal-chave::after {
+  transform: translateX(16px);
+  background: var(--acento);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .painel-som, .canal-chave::after { transition: none; }
+}

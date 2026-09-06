@@ -79,7 +79,13 @@ const estado = {
   jogadores: [],
   comissao: [],
   escalacao: { ...TATICA_PADRAO, slots: {} },
-  somLigado: lerPref('som', true),
+  // três canais independentes: dá para calar a trilha e manter a narração.
+  // O 'som' antigo vira o padrão dos três, para quem já tinha preferência.
+  audio: {
+    trilha: lerPref('audio-trilha', lerPref('som', true)),
+    efeitos: lerPref('audio-efeitos', lerPref('som', true)),
+    vozes: lerPref('audio-vozes', lerPref('som', true)),
+  },
   // seleção ativa: { tipo: 'slot'|'trilho', slotId?, jogadorId? }
   selecao: null,
 };
@@ -239,17 +245,16 @@ function cartaHTML(j, detalhada = false, foraDePosicao = false, editavel = false
     : `<span class="carta-foto">${foto}</span>`;
 
   const areaNome = editavel
-    ? `<input class="carta-nome entrada-nome${classeNome(j.apelido)}" id="in-apelido"
-              value="${escapar(j.apelido)}" maxlength="14" enterkeyhint="done"
-              placeholder="SEU CRAQUE" aria-label="Apelido do jogador"
-              autocomplete="off" autocorrect="off" autocapitalize="characters"
-              spellcheck="false" data-1p-ignore data-lpignore="true" data-form-type="other">`
+    ? `<div class="carta-nome entrada-nome${classeNome(j.apelido)}" id="in-apelido"
+            ${CAMPO_EDITAVEL} autocapitalize="characters"
+            aria-label="Apelido do jogador" data-vazio="Seu craque"
+            >${escapar(j.apelido)}</div>`
     : `<div class="carta-nome${classeNome(j.apelido)}">${escapar(j.apelido)}</div>`;
 
   return `
     <div class="carta ${tierDe(nota)}${detalhada ? ' detalhada' : ''}${foraDePosicao ? ' fora-de-posicao' : ''}" data-jogador="${j.id}">
       <div class="carta-corpo">
-        <span class="carta-nota"><b>${nota}</b><span>${j.posicao}</span></span>
+        <span class="carta-nota"><b>${nota}</b><span>${j.posicao || '—'}</span></span>
         ${foraDePosicao ? '<span class="aviso-posicao" title="Fora de posição">!</span>' : ''}
         ${areaFoto}
       </div>
@@ -384,11 +389,10 @@ function credencialHTML(m, editavel = false) {
     ? `<label class="credencial-foto editavel" for="in-foto-membro">${foto}<span class="carta-foto-troca">${ic.camera}</span></label>`
     : `<span class="credencial-foto">${foto}</span>`;
   const areaNome = editavel
-    ? `<input class="credencial-nome entrada-nome" id="in-nome-membro" maxlength="18"
-              value="${escapar(m.nome)}" placeholder="NOME" aria-label="Nome do membro"
-              enterkeyhint="done" autocomplete="off" autocorrect="off"
-              autocapitalize="characters" spellcheck="false"
-              data-1p-ignore data-lpignore="true" data-form-type="other">`
+    ? `<div class="credencial-nome entrada-nome${classeNome(m.nome)}" id="in-nome-membro"
+            ${CAMPO_EDITAVEL} autocapitalize="characters"
+            aria-label="Nome do membro" data-vazio="Nome"
+            >${escapar(m.nome)}</div>`
     : `<b class="credencial-nome${classeNome(m.nome)}">${escapar(m.nome)}</b>`;
   return `
     <div class="credencial" data-membro="${m.id}">
@@ -530,9 +534,11 @@ function renderTopo() {
     : 'Toque para começar';
 
   const btnSom = $('#btn-som');
-  btnSom.innerHTML = estado.somLigado ? ic.som : ic.semSom;
-  btnSom.classList.toggle('ativo', estado.somLigado && trilha.tocando);
-  btnSom.setAttribute('aria-label', estado.somLigado ? 'Desligar trilha sonora' : 'Ligar trilha sonora');
+  const algumLigado = estado.audio.trilha || estado.audio.efeitos || estado.audio.vozes;
+  btnSom.innerHTML = algumLigado ? ic.som : ic.semSom;
+  btnSom.classList.toggle('ativo', estado.audio.trilha && trilha.tocando);
+  btnSom.setAttribute('aria-label', 'Som do jogo');
+  btnSom.setAttribute('aria-expanded', String(!!$('#painel-som')));
 }
 
 function renderBarraTatica() {
@@ -630,6 +636,125 @@ function ligarAcoesCarta(el, { jogador, slotId }) {
       else if (acao === 'excluir') { limparSelecao(); excluirJogador(jogador); }
       else if (acao === 'escalar') { limparSelecao(); await escalarAutomatico(jogador); }
     });
+  });
+}
+
+/* ---------- campos de texto que não são campos de formulário ----------
+
+   O iOS oferece preenchimento automático porque reconhece um <input> como
+   campo de formulário — e ignora autocomplete="off". Um elemento editável
+   não é campo de formulário nenhum, então não há o que a Apple preencher.
+   O teclado abre igual; a barra de contatos e senhas some.                */
+
+const CAMPO_EDITAVEL = 'contenteditable="plaintext-only" role="textbox" ' +
+  'spellcheck="false" autocorrect="off" enterkeyhint="done"';
+
+// texto de um campo editável, sem quebras de linha nem espaços das pontas
+function textoDe(seletor) {
+  const el = typeof seletor === 'string' ? $(seletor) : seletor;
+  return (el?.textContent ?? '').replace(/\s+/g, ' ').trim();
+}
+
+// Enter encerra em vez de quebrar linha, e o limite de caracteres é nosso
+function ligarCampoEditavel(seletor, { limite = 40, aoMudar } = {}) {
+  const el = $(seletor);
+  if (!el) return;
+
+  el.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+  });
+  el.addEventListener('input', () => {
+    if (textoDe(el).length > limite) {
+      el.textContent = textoDe(el).slice(0, limite);
+      // devolve o cursor ao fim, senão ele salta para o começo
+      const r = document.createRange();
+      r.selectNodeContents(el);
+      r.collapse(false);
+      const sel = getSelection();
+      sel.removeAllRanges();
+      sel.addRange(r);
+    }
+    aoMudar?.();
+  });
+  // colar tem que entrar como texto puro, sem HTML de fora
+  el.addEventListener('paste', (e) => {
+    e.preventDefault();
+    const txt = (e.clipboardData || window.clipboardData).getData('text');
+    document.execCommand('insertText', false, txt.replace(/\s+/g, ' '));
+  });
+}
+
+/* ---------- confirmar deslizando ----------
+
+   Um botão de largura total com verbo no imperativo é a assinatura visual
+   de um formulário web. Deslizar é gesto de aparelho, pede intenção (não
+   se confirma sem querer) e devolve uma sensação física ao ato de fechar
+   contrato. O teclado confirma com Enter, para quem não arrasta.          */
+
+function deslizarHTML(id, texto) {
+  return `
+    <div class="deslizar" id="${id}" role="button" tabindex="0" aria-label="${texto}">
+      <span class="deslizar-texto">${texto}</span>
+      <span class="deslizar-punho">${ic.seta}</span>
+    </div>`;
+}
+
+function ligarDeslizar(seletor, aoConfirmar) {
+  const el = $(seletor);
+  if (!el) return;
+  const punho = el.querySelector('.deslizar-punho');
+  let x0 = null, curso = 0;
+
+  const largura = () => el.clientWidth - punho.offsetWidth - 8;
+
+  const soltar = (confirmou) => {
+    x0 = null;
+    el.classList.remove('arrastando');
+    punho.style.transform = '';
+    el.style.setProperty('--progresso', 0);
+    if (confirmou) { el.classList.add('confirmado'); aoConfirmar(); }
+  };
+
+  el.addEventListener('pointerdown', (e) => {
+    if (el.classList.contains('confirmado')) return;
+    x0 = e.clientX;
+    curso = 0;
+    el.classList.add('arrastando');
+    try { el.setPointerCapture(e.pointerId); } catch { /* segue sem captura */ }
+  });
+
+  el.addEventListener('pointermove', (e) => {
+    if (x0 === null) return;
+    curso = Math.max(0, Math.min(largura(), e.clientX - x0));
+    punho.style.transform = `translateX(${curso}px)`;
+    el.style.setProperty('--progresso', (curso / largura()).toFixed(3));
+  });
+
+  const fim = () => {
+    if (x0 === null) return;
+    // 88% do curso já conta como intenção clara
+    const confirmou = curso >= largura() * 0.88;
+    if (confirmou) navigator.vibrate?.([14, 30, 22]);
+    soltar(confirmou);
+  };
+  el.addEventListener('pointerup', fim);
+  el.addEventListener('pointercancel', () => soltar(false));
+
+  // teclado: quem não arrasta confirma com Enter ou espaço
+  el.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      el.classList.add('confirmado');
+      aoConfirmar();
+    }
+  });
+
+  // toque simples: mostra o caminho em vez de não fazer nada
+  el.addEventListener('click', (e) => {
+    if (curso > 4 || el.classList.contains('confirmado')) return;
+    el.classList.remove('convidando');
+    void el.offsetWidth;
+    el.classList.add('convidando');
   });
 }
 
@@ -1070,6 +1195,52 @@ function fecharFolha() {
 $('#folha-fechar').innerHTML = ic.fechar;
 folhaFundo.addEventListener('click', fecharFolha);
 $('#folha-fechar').addEventListener('click', fecharFolha);
+
+/* Puxar a ficha para baixo fecha.
+
+   No celular o X fica no topo de uma folha alta — longe do polegar. O
+   gesto resolve sem depender de alcance: arrasta pela alça ou pelo
+   cabeçalho, e além de um terço da altura (ou num puxão rápido) ela sai. */
+(() => {
+  const alvos = [$('#folha-alca'), $('#folha-topo') || document.querySelector('.folha-topo')];
+  let y0 = null, dy = 0, t0 = 0;
+
+  const comecar = (e) => {
+    // não sequestra o gesto de quem está rolando o conteúdo
+    if (e.target.closest('.folha-corpo, .deslizar, button, [contenteditable]')) return;
+    y0 = e.clientY;
+    dy = 0;
+    t0 = performance.now();
+    folha.classList.add('arrastando');
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* segue */ }
+  };
+
+  const mover = (e) => {
+    if (y0 === null) return;
+    dy = Math.max(0, e.clientY - y0);
+    folha.style.transform = `translate(-50%, ${dy}px)`;
+    folhaFundo.style.opacity = String(Math.max(0, 1 - dy / (folha.offsetHeight * 0.9)));
+  };
+
+  const soltar = () => {
+    if (y0 === null) return;
+    const rapido = dy > 60 && (performance.now() - t0) < 320;
+    const longe = dy > folha.offsetHeight / 3;
+    y0 = null;
+    folha.classList.remove('arrastando');
+    folha.style.transform = '';
+    folhaFundo.style.opacity = '';
+    if (rapido || longe) fecharFolha();
+  };
+
+  for (const alvo of alvos) {
+    if (!alvo) continue;
+    alvo.addEventListener('pointerdown', comecar);
+    alvo.addEventListener('pointermove', mover);
+    alvo.addEventListener('pointerup', soltar);
+    alvo.addEventListener('pointercancel', soltar);
+  }
+})();
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { fecharFolha(); limparSelecao(); } });
 
 // arrastar a alça para fechar
@@ -1112,19 +1283,18 @@ function folhaTime() {
           <input type="file" accept="image/*" id="in-escudo">
         </label>
 
-        <input class="entrada-titulo" id="in-nome-time" maxlength="26"
-               placeholder="NOME DO CLUBE" value="${escapar(t.nome)}"
-               aria-label="Nome do clube" enterkeyhint="done"
-               autocomplete="off" autocorrect="off" autocapitalize="characters"
-               spellcheck="false" data-1p-ignore data-lpignore="true" data-form-type="other">
+        <div class="entrada-titulo" id="in-nome-time" ${CAMPO_EDITAVEL}
+             autocapitalize="characters" aria-label="Nome do clube"
+             data-vazio="Nome do clube">${escapar(t.nome)}</div>
 
         <p class="ajuda">O escudo vai para o placar e para o círculo central do gramado.</p>
       </div>`,
-    rodape: `<button class="btn btn-acento btn-largo" id="salvar-time">${estado.time ? 'Salvar' : 'Fundar o clube'}</button>`,
+    rodape: deslizarHTML('salvar-time', estado.time ? 'Deslize para salvar' : 'Deslize para fundar'),
     aoMontar: () => {
+      ligarCampoEditavel('#in-nome-time', { limite: 26 });
       ligarUpload('#in-escudo', '#up-escudo', 420, (d) => escudo = d);
-      $('#salvar-time').onclick = async () => {
-        const nome = $('#in-nome-time').value.trim();
+      ligarDeslizar('#salvar-time', async () => {
+        const nome = textoDe('#in-nome-time');
         if (!nome) return toast('O clube precisa de um nome');
         estado.time = { nome, escudo };
         await DB.salvarTime(estado.time);
@@ -1132,7 +1302,7 @@ function folhaTime() {
         renderTudo();
         efeitos.tocar('guardar');
         toast('Clube salvo');
-      };
+      });
     },
   });
 }
@@ -1157,12 +1327,12 @@ function folhaMembro(existente) {
       </div>`,
     rodape: `
       ${novo ? '' : `<button class="btn btn-perigo" id="excluir-membro">${ic.lixeira}</button>`}
-      <button class="btn btn-acento" id="salvar-membro">${novo ? 'Contratar' : 'Salvar'}</button>`,
+      ${deslizarHTML('salvar-membro', novo ? 'Deslize para contratar' : 'Deslize para salvar')}`,
     aoMontar: () => {
       // o campo de nome mora dentro da credencial, que é o que vamos
       // desenhar: na primeira passada ele ainda não existe
       const lerFormulario = ({ cru = false } = {}) => ({
-        nome: ($('#in-nome-membro')?.value ?? base.nome).trim() || (cru ? '' : 'Sem nome'),
+        nome: ($('#in-nome-membro') ? textoDe('#in-nome-membro') : base.nome) || (cru ? '' : 'Sem nome'),
         funcao: $('#chips-funcao .ativa').dataset.funcao,
         foto,
       });
@@ -1170,9 +1340,12 @@ function folhaMembro(existente) {
       // o nome só troca a classe de tamanho
       const atualizar = () => {
         $('#previa-membro').innerHTML = credencialHTML(lerFormulario({ cru: true }), true);
-        $('#in-nome-membro').addEventListener('input', () => {
-          $('#previa-membro .credencial-nome').className =
-            'credencial-nome entrada-nome' + classeNome($('#in-nome-membro').value);
+        ligarCampoEditavel('#in-nome-membro', {
+          limite: 18,
+          aoMudar: () => {
+            $('#previa-membro .credencial-nome').className =
+              'credencial-nome entrada-nome' + classeNome(textoDe('#in-nome-membro'));
+          },
         });
       };
       atualizar();
@@ -1188,8 +1361,8 @@ function folhaMembro(existente) {
       });
       ligarUpload('#in-foto-membro', null, 420, (d) => { foto = d; atualizar(); });
 
-      $('#salvar-membro').onclick = async () => {
-        if (!$('#in-nome-membro').value.trim()) return toast('O membro precisa de um nome');
+      ligarDeslizar('#salvar-membro', async () => {
+        if (!textoDe('#in-nome-membro')) return toast('O membro precisa de um nome');
         const registro = { id: existente?.id || uid(), ...lerFormulario() };
         await DB.salvarMembro(registro);
         const i = estado.comissao.findIndex((m) => m.id === registro.id);
@@ -1199,7 +1372,7 @@ function folhaMembro(existente) {
         renderElenco();
         efeitos.tocar('guardar');
         toast(novo ? `${registro.nome} entrou na comissão` : `${registro.nome} atualizado`);
-      };
+      });
 
       $('#excluir-membro')?.addEventListener('click', async () => {
         const ok = await confirmar({
@@ -1395,11 +1568,16 @@ function ligarUpload(seletorInput, seletorCaixa, tamanho, aoTer) {
 
 function folhaJogador(jogadorExistente, posicaoSugerida) {
   const novo = !jogadorExistente;
+  // Sem posição escolhida de saída: um ATA pré-marcado fazia o jogador
+  // nascer atacante por descuido. Sem ela, o radar começa neutro e é a
+  // escolha da posição que dá forma ao jogador.
   const base = jogadorExistente || {
     apelido: '',
-    posicao: posicaoSugerida || 'ATA',
+    posicao: posicaoSugerida || null,
     foto: '',
-    ...PERFIS[posicaoSugerida || 'ATA'],
+    ...(posicaoSugerida
+      ? PERFIS[posicaoSugerida]
+      : Object.fromEntries(ATRIBUTOS.map((a) => [a.chave, 50]))),
   };
   let foto = base.foto || '';
   let posicao = base.posicao;
@@ -1409,7 +1587,7 @@ function folhaJogador(jogadorExistente, posicaoSugerida) {
   const lerFormulario = ({ cru = false } = {}) => ({
     // cru: o que vai para a carta enquanto se edita (vazio fica vazio, com
     // marca d'água). Salvo, um nome em branco vira "Sem nome".
-    apelido: ($('#in-apelido')?.value ?? base.apelido).trim() || (cru ? '' : 'Sem nome'),
+    apelido: ($('#in-apelido') ? textoDe('#in-apelido') : base.apelido) || (cru ? '' : 'Sem nome'),
     posicao,
     foto,
     ...valores,
@@ -1435,7 +1613,7 @@ function folhaJogador(jogadorExistente, posicaoSugerida) {
       </div>`,
     rodape: `
       ${novo ? '' : `<button class="btn btn-perigo" id="excluir-jogador">${ic.lixeira}</button>`}
-      <button class="btn btn-acento" id="salvar-jogador">${novo ? 'Assinar contrato' : 'Salvar'}</button>`,
+      ${deslizarHTML('salvar-jogador', novo ? 'Deslize para assinar' : 'Deslize para salvar')}`,
     aoMontar: () => {
       // A carta é o formulário: redesenhá-la inteira a cada tecla mataria o
       // foco do campo. Por isso o nome só repinta o que depende dele.
@@ -1446,10 +1624,12 @@ function folhaJogador(jogadorExistente, posicaoSugerida) {
 
       // o campo de nome nasce de novo a cada repintura; o de arquivo, não
       const ligarCamposDaCarta = () => {
-        const campo = $('#in-apelido');
-        campo.addEventListener('input', () => {
-          $('#previa .carta-nome').className =
-            'carta-nome entrada-nome' + classeNome(campo.value);
+        ligarCampoEditavel('#in-apelido', {
+          limite: 14,
+          aoMudar: () => {
+            $('#previa .carta-nome').className =
+              'carta-nome entrada-nome' + classeNome(textoDe('#in-apelido'));
+          },
         });
       };
 
@@ -1459,8 +1639,14 @@ function folhaJogador(jogadorExistente, posicaoSugerida) {
       const trocarPosicao = (sigla) => {
         posicao = sigla;
         $('#chips-posicao .ativa')?.classList.remove('ativa');
+        if (!sigla) {
+          $('#nome-posicao').textContent = 'Escolha onde ele joga';
+          $('#nome-posicao').classList.add('pedindo');
+          return atualizarNotaEStats();
+        }
         $(`.chip-pos[data-pos="${sigla}"]`).classList.add('ativa');
         $('#nome-posicao').textContent = POSICOES.find((p) => p.sigla === sigla).nome;
+        $('#nome-posicao').classList.remove('pedindo');
         // jogador novo com o radar intocado: o perfil da posição molda a forma
         if (novo && !tocouNosAtributos) {
           Object.assign(valores, PERFIS[sigla]);
@@ -1496,11 +1682,12 @@ function folhaJogador(jogadorExistente, posicaoSugerida) {
 
       trocarPosicao(base.posicao);   // depois das declarações: const tem zona morta
 
-      $('#salvar-jogador').onclick = async () => {
-        if (!$('#in-apelido').value.trim()) {
+      ligarDeslizar('#salvar-jogador', async () => {
+        if (!textoDe('#in-apelido')) {
           $('#in-apelido').focus();
           return toast('O jogador precisa de um apelido');
         }
+        if (!posicao) return toast('Escolha a posição do jogador');
         const dados = lerFormulario();
         const registro = { id: jogadorExistente?.id || uid(), criadoEm: jogadorExistente?.criadoEm || Date.now(), ...dados };
         await DB.salvarJogador(registro);
@@ -1511,7 +1698,7 @@ function folhaJogador(jogadorExistente, posicaoSugerida) {
         renderTudo();
         if (novo) { revelarCarta(registro); if (posicaoSugerida) await escalarAutomatico(registro); }
         else { efeitos.tocar('guardar'); toast(`${dados.apelido} atualizado`); }
-      };
+      });
 
       $('#excluir-jogador')?.addEventListener('click', () => excluirJogador(jogadorExistente));
     },
@@ -1615,29 +1802,86 @@ function revelarCarta(j) {
 
 let avisouNarracao = false;
 
-async function ligarSom(ligar) {
-  estado.somLigado = ligar;
-  efeitos.ligado = ligar;
-  narrador.ligado = ligar;
-  if (!ligar) narrador.calar();
-  gravarPref('som', ligar);
-  if (ligar) {
-    trilha.tocar();
-    // narração depende de voz instalada no sistema: avisa em vez de ficar mudo
-    if (!narrador.disponivel && !avisouNarracao) {
-      avisouNarracao = true;
-      setTimeout(() => toast('Sem voz instalada neste aparelho: só música e efeitos'), 900);
-    }
-  } else {
-    trilha.parar();
+/* Cada canal por si.
+
+   Antes era um interruptor só: calar a música calava a narração junto.
+   Aqui os três são independentes, porque quem joga com som ambiente ainda
+   quer ouvir o narrador — que foi exatamente o pedido.                    */
+
+const CANAIS = [
+  { chave: 'trilha', nome: 'Trilha', desc: 'A música de fundo' },
+  { chave: 'efeitos', nome: 'Efeitos', desc: 'Os sons das ações' },
+  { chave: 'vozes', nome: 'Narração', desc: 'O narrador comentando' },
+];
+
+function aplicarAudio() {
+  efeitos.ligado = estado.audio.efeitos;
+  narrador.ligado = estado.audio.vozes;
+  if (!estado.audio.vozes) narrador.calar();
+  if (estado.audio.trilha) trilha.tocar(); else trilha.parar();
+  renderTopo();
+}
+
+async function alternarCanal(chave) {
+  estado.audio[chave] = !estado.audio[chave];
+  gravarPref('audio-' + chave, estado.audio[chave]);
+  aplicarAudio();
+
+  if (chave === 'vozes' && estado.audio.vozes && !narrador.disponivel && !avisouNarracao) {
+    avisouNarracao = true;
+    setTimeout(() => toast('Sem narração neste aparelho'), 700);
   }
+  // o efeito só é ouvido se o canal dele estiver ligado — e é isso mesmo
+  efeitos.tocar('toque');
+}
+
+/* Painel do som: abre encostado no glifo, não numa folha inteira. Mexer no
+   volume é ajuste rápido; abrir uma ficha para isso seria peso demais. */
+function abrirPainelSom() {
+  if ($('#painel-som')) return fecharPainelSom();
+
+  const painel = document.createElement('div');
+  painel.className = 'painel-som';
+  painel.id = 'painel-som';
+  painel.innerHTML = CANAIS.map((c) => `
+    <button class="canal ${estado.audio[c.chave] ? 'ligado' : ''}" data-canal="${c.chave}"
+            role="switch" aria-checked="${estado.audio[c.chave]}">
+      <span class="canal-txt"><b>${c.nome}</b><small>${c.desc}</small></span>
+      <span class="canal-chave"></span>
+    </button>`).join('');
+
+  document.querySelector('.hud').appendChild(painel);
+  requestAnimationFrame(() => painel.classList.add('aberto'));
+
+  painel.addEventListener('click', (e) => {
+    const b = e.target.closest('.canal');
+    if (!b) return;
+    alternarCanal(b.dataset.canal);
+    b.classList.toggle('ligado', estado.audio[b.dataset.canal]);
+    b.setAttribute('aria-checked', String(estado.audio[b.dataset.canal]));
+  });
+
+  setTimeout(() => document.addEventListener('pointerdown', foraDoPainel), 0);
+}
+
+function foraDoPainel(e) {
+  if (e.target.closest('#painel-som, #btn-som')) return;
+  fecharPainelSom();
+}
+
+function fecharPainelSom() {
+  const p = $('#painel-som');
+  if (!p) return;
+  document.removeEventListener('pointerdown', foraDoPainel);
+  p.classList.remove('aberto');
+  setTimeout(() => p.remove(), 180);
   renderTopo();
 }
 
 // Navegadores exigem um gesto do usuário antes de tocar áudio.
 function prepararDesbloqueioDeAudio() {
   const desbloquear = () => {
-    if (!estado.somLigado) return;
+    if (!estado.audio.trilha) return;
     trilha.tocar();
     renderTopo();
   };
@@ -1649,7 +1893,7 @@ function prepararDesbloqueioDeAudio() {
    ========================================================= */
 
 $('#btn-time').addEventListener('click', folhaTime);
-$('#btn-som').addEventListener('click', () => ligarSom(!estado.somLigado));
+$('#btn-som').addEventListener('click', abrirPainelSom);
 
 $('#gramado').addEventListener('click', (e) => {
   if (!e.target.closest('.slot')) limparSelecao();
@@ -1677,8 +1921,8 @@ async function iniciar() {
   ]);
   estado.comissao = comissao;
 
-  efeitos.ligado = estado.somLigado;
-  narrador.ligado = estado.somLigado;
+  efeitos.ligado = estado.audio.efeitos;
+  narrador.ligado = estado.audio.vozes;
   estado.time = time;
   estado.jogadores = jogadores;
   if (escalacao && TATICAS[escalacao.formacao]) {

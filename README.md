@@ -12,6 +12,8 @@ do navegador.
 - **Criar jogadores** — a carta *é* o formulário: o apelido se escreve nela, a
   foto se troca tocando nela, e as seis características (Ritmo, Finalização,
   Passe, Drible, Defesa, Físico) viram um hexágono que se molda com o dedo.
+  A posição não vem escolhida — é a escolha dela que dá forma ao jogador.
+  Confirma-se deslizando, não apertando botão.
 - **Escalar** — arraste do elenco para o campo, ou toque no jogador e depois na posição. As cartas voam até o lugar.
 - **19 táticas** — 10 formações com variações (4-4-2 Losango, 4-3-3 Falso 9, 3-5-2 Alas ofensivos…), escolhidas pelo desenho do time.
 - **Força e Sintonia** — duas medalhas no placar, com o arco contando o valor.
@@ -85,6 +87,9 @@ início a cauda que passa do fim), normaliza em −1 dBFS e baixa o WAV:
 ```bash
 ffmpeg -y -i trilha-bruta.wav -codec:a libmp3lame -b:a 128k -ac 1 audio/trilha.mp3
 ```
+Trilha, efeitos e narração têm chaves separadas no painel do som: dá para
+calar a música e continuar ouvindo o narrador.
+
 - **Narração** — 42 frases para os momentos do time (criou jogador, trocou
   para melhor, trocou para pior, improvisou na posição, mudou a tática,
   dispensou). Ela toca por dois caminhos, nesta ordem:

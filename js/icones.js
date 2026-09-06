@@ -5,6 +5,7 @@ const svg = (corpo, extra = '') =>
 export const ic = {
   mais: svg('<path d="M12 5v14M5 12h14"/>'),
   fechar: svg('<path d="M18 6 6 18M6 6l12 12"/>'),
+  seta: svg('<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>'),
   lapis: svg('<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>'),
   lixeira: svg('<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>'),
   camera: svg('<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"/><circle cx="12" cy="13" r="4"/>'),
