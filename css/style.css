@@ -41,9 +41,16 @@
   --fonte: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --fonte-cond: "Roboto Condensed", "Arial Narrow", "Liberation Sans Narrow", "DejaVu Sans Condensed", var(--fonte);
 
+  /* Áreas seguras do aparelho, num lugar só. Sem isto espalhado, o topo e o
+     rodapé viravam faixas de fundo — uma logo abaixo do relógio, outra
+     abaixo do elenco — porque o respiro ficava FORA do conteúdo. */
+  --topo-seguro: env(safe-area-inset-top, 0px);
+  --baixo-seguro: env(safe-area-inset-bottom, 0px);
+
   /* HUD: uma linha só no lugar do antigo header + fileira de tiles */
-  --hud-h: 62px;
+  --hud-h: 56px;
   --hud-invasao: 10px;   /* o quanto o HUD desce por cima do gramado */
+  --elenco-invasao: 14px; /* e o quanto a linha das abas sobe por cima dele */
   --brasao: 34px;
   --medalha: 38px;
   --nome-time: 17px;
@@ -100,7 +107,6 @@ svg { display: block; width: 100%; height: 100%; }
   flex-direction: column;
   max-width: 1180px;
   margin: 0 auto;
-  padding-top: env(safe-area-inset-top);
 }
 
 .conteudo {
@@ -163,8 +169,8 @@ input, textarea, [contenteditable] {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: var(--hud-h);
-  padding: 0 4px;
+  height: calc(var(--hud-h) + var(--topo-seguro));
+  padding: var(--topo-seguro) 4px 0;
   /* o gradiente morre no gramado: nada de linha separando os dois */
   margin-bottom: calc(var(--hud-invasao) * -1);
   padding-bottom: var(--hud-invasao);
@@ -708,7 +714,7 @@ input, textarea, [contenteditable] {
      credencial tem essa largura direto. Mesma proporção (1/1.4), mesmo tamanho. */
   --carta-trilho: 78px;
   flex-shrink: 0;
-  padding: 8px 0 calc(6px + env(safe-area-inset-bottom));
+  padding: 8px 0 calc(6px + var(--baixo-seguro) * .5);
 }
 
 /* abas: elenco e comissão dividem o mesmo espaço, uma de cada vez */
@@ -2101,7 +2107,17 @@ input[type=range]::-moz-range-thumb {
      Enxuta ao osso: cada pixel devolvido aqui vira campo, que é quem cresce
      com a sobra. */
   .trilho { min-height: calc(var(--carta-trilho) * 1.4 + 10px); padding: 5px 12px 5px; }
-  .coluna-elenco { padding-top: 2px; padding-bottom: calc(2px + env(safe-area-inset-bottom)); }
+  /* O indicador de gesto do iPhone é fino: um terço da área segura já o
+     mantém longe das cartas, e o resto volta a ser campo. */
+  .coluna-elenco {
+    padding-top: 2px;
+    padding-bottom: calc(2px + var(--baixo-seguro) * .34);
+    /* sobe por cima da borda do gramado, como o HUD desce nela: sem o vão,
+       some a faixa de fundo que aparecia entre o campo e as abas */
+    margin-top: calc(var(--elenco-invasao) * -1);
+    padding-top: var(--elenco-invasao);
+  }
+  .elenco-topo { position: relative; z-index: 3; }
   .elenco-topo { padding-bottom: 2px; }
   .coluna-elenco { --carta-trilho: 72px; }
 }
@@ -2625,3 +2641,77 @@ input[type=range]::-moz-range-thumb {
 /* quem está na segunda função não é problema: fica em verde, não em âmbar */
 .lista-alerta.ok { border-color: rgba(0, 232, 132, .3); }
 .lista-alerta.ok b { color: var(--acento); }
+
+/* =========================================================
+   Profundidade
+
+   Sem perspectiva. Inclinar o gramado em rotateX é o gesto óbvio de "3D",
+   mas ele custa exatamente o que mais importa aqui: altura. A ponta longe
+   comprime, a perto precisa de folga, e o campo encolhe no celular — já
+   tentamos e os atacantes acabaram fora da grama.
+
+   A profundidade vem então de luz e sombra, que não custam pixel nenhum de
+   layout: o gramado vira uma bacia iluminada de cima, e as cartas ganham
+   sombra proporcional a quanto estão "perto" (o --escala já cresce para
+   baixo do campo).
+   ========================================================= */
+
+/* o gramado como bacia: bordas rebaixadas, centro iluminado */
+.gramado::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 14px 26px -10px rgba(0, 0, 0, .55),
+    inset 0 -22px 34px -14px rgba(0, 0, 0, .6),
+    inset 26px 0 40px -30px rgba(0, 0, 0, .5),
+    inset -26px 0 40px -30px rgba(0, 0, 0, .5);
+}
+
+/* a carta projeta sombra no gramado, e quanto mais perto (mais embaixo),
+   maior e mais espalhada — é o que o olho lê como estar à frente */
+.slot .carta {
+  filter: drop-shadow(0 calc(var(--escala, 1) * 6px) calc(var(--escala, 1) * 9px)
+                      rgba(0, 0, 0, calc(.28 + var(--escala, 1) * .22)));
+  transition: filter .22s;
+}
+.slot.selecionado .carta {
+  filter: drop-shadow(0 calc(var(--escala, 1) * 14px) calc(var(--escala, 1) * 18px)
+                      rgba(0, 0, 0, .6));
+}
+
+/* a pílula da posição acompanha, senão flutua descolada da carta */
+.pilula { box-shadow: 0 calc(var(--escala, 1) * 3px) calc(var(--escala, 1) * 6px) rgba(0, 0, 0, .5); }
+
+/* ---- a carta da ficha responde ao dedo em 3D ---- */
+
+.palco-carta { perspective: 900px; }
+.palco-carta .carta {
+  transform: rotateX(var(--incX, 0deg)) rotateY(var(--incY, 0deg));
+  transform-style: preserve-3d;
+  transition: transform .35s cubic-bezier(.2, .9, .3, 1);
+  will-change: transform;
+}
+.palco-carta.inclinando .carta { transition: transform .06s linear; }
+
+/* brilho que corre pela carta conforme ela inclina */
+.palco-carta .carta::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  clip-path: inherit;
+  background: radial-gradient(60% 45% at var(--luzX, 50%) var(--luzY, 30%),
+    rgba(255, 255, 255, .3), transparent 62%);
+  opacity: var(--luz, 0);
+  transition: opacity .3s;
+}
+.palco-carta.inclinando .carta::after { transition: opacity .08s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .palco-carta .carta { transform: none; }
+  .palco-carta .carta::after { opacity: 0; }
+}

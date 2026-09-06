@@ -145,6 +145,19 @@ antes de publicar as gravações.
 
 Um botão no topo silencia tudo de uma vez.
 
+## Profundidade
+
+Sem perspectiva no gramado. Inclinar o campo em `rotateX` é o gesto óbvio de
+"3D", mas custa justamente o que mais falta no celular: altura. A ponta longe
+comprime, a perto pede folga, e o campo encolhe — foi tentado e os atacantes
+acabaram fora da grama.
+
+A profundidade vem de luz e sombra, que não custam layout: o gramado é uma
+bacia iluminada de cima, e a sombra de cada carta cresce com o `--escala`, que
+já aumenta conforme a carta se aproxima da base do campo. A carta da ficha,
+essa sim, gira em perspectiva sob o dedo, com o brilho correndo pela
+superfície.
+
 ## Instalando como app
 
 Abra no celular e use "Adicionar à tela de início". É um PWA: instala, abre em

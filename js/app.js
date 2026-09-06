@@ -752,6 +752,52 @@ function ligarCampoEditavel(seletor, { limite = 40, aoMudar } = {}) {
   });
 }
 
+/* ---------- a carta inclina para o dedo ----------
+
+   Profundidade sem perspectiva no gramado: a carta da ficha é um objeto que
+   se vira na mão, com o brilho correndo pela superfície conforme ela gira.
+   Custa zero de layout, que é o que o campo não tem de sobra.            */
+
+const INCLINACAO_MAX = 11;   // graus; mais que isso vira enjoo, não relevo
+
+function ligarInclinacao(seletor) {
+  const palco = $(seletor);
+  if (!palco) return;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  const aplicar = (e) => {
+    const r = palco.getBoundingClientRect();
+    const fx = (e.clientX - r.left) / r.width;    // 0 à esquerda, 1 à direita
+    const fy = (e.clientY - r.top) / r.height;
+    palco.style.setProperty('--incY', ((fx - .5) * 2 * INCLINACAO_MAX).toFixed(2) + 'deg');
+    palco.style.setProperty('--incX', ((.5 - fy) * 2 * INCLINACAO_MAX).toFixed(2) + 'deg');
+    palco.style.setProperty('--luzX', (fx * 100).toFixed(1) + '%');
+    palco.style.setProperty('--luzY', (fy * 100).toFixed(1) + '%');
+    palco.style.setProperty('--luz', '1');
+  };
+
+  const soltar = () => {
+    palco.classList.remove('inclinando');
+    palco.style.setProperty('--incX', '0deg');
+    palco.style.setProperty('--incY', '0deg');
+    palco.style.setProperty('--luz', '0');
+  };
+
+  palco.addEventListener('pointerdown', (e) => {
+    // tocar na foto ou no nome é para editar, não para girar a carta
+    if (e.target.closest('.carta-foto, .entrada-nome')) return;
+    palco.classList.add('inclinando');
+    try { palco.setPointerCapture(e.pointerId); } catch { /* segue sem captura */ }
+    aplicar(e);
+  });
+  palco.addEventListener('pointermove', (e) => {
+    if (palco.classList.contains('inclinando')) aplicar(e);
+  });
+  palco.addEventListener('pointerup', soltar);
+  palco.addEventListener('pointercancel', soltar);
+  palco.addEventListener('pointerleave', soltar);
+}
+
 /* ---------- confirmar deslizando ----------
 
    Um botão de largura total com verbo no imperativo é a assinatura visual
@@ -1717,6 +1763,7 @@ function folhaJogador(jogadorExistente, posicaoSugerida) {
       };
 
       repintarCarta();
+      ligarInclinacao('#previa');
       ligarUpload('#in-foto', null, 420, (d) => { foto = d; repintarCarta(); });
 
       // O radar inteiro é refeito quando o ofício muda: são outros seis eixos.
