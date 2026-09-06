@@ -1,4 +1,4 @@
-const CACHE_NAME = 'notatiko-v22';
+const CACHE_NAME = 'notatiko-v24';
 const ARQUIVOS_ESSENCIAIS = [
   './',
   './index.html',
@@ -11,13 +11,45 @@ const ARQUIVOS_ESSENCIAIS = [
   './js/icones.js',
   './js/taticas.js',
   './audio/trilha.mp3',
+  './audio/efeitos/toque.mp3',
+  './audio/efeitos/abrir.mp3',
+  './audio/efeitos/fechar.mp3',
+  './audio/efeitos/pouso.mp3',
+  './audio/efeitos/tirar.mp3',
+  './audio/efeitos/excluir.mp3',
+  './audio/efeitos/guardar.mp3',
+  './audio/efeitos/tatica.mp3',
+  './audio/efeitos/revelar.mp3',
+  './audio/efeitos/impacto.mp3',
+  './audio/efeitos/brilho.mp3',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',
 ];
 
+/* Baixa em lotes, com uma segunda tentativa para o que falhar.
+
+   Pedir as 42 gravações de uma vez derrubava a maioria: numa medição local
+   só 3 chegaram ao cache, e o catch vazio escondia as outras 39. Numa rede
+   de celular instável daria no mesmo — o app ficaria com um cache offline
+   incompleto sem ninguém perceber. Lotes pequenos e uma repescagem tornam
+   a instalação bem mais provável de terminar inteira.                     */
+async function guardarEmLotes(cache, arquivos, tamanho = 6) {
+  const falharam = [];
+
+  for (let i = 0; i < arquivos.length; i += tamanho) {
+    const lote = arquivos.slice(i, i + tamanho);
+    await Promise.all(lote.map((a) => cache.add(a).catch(() => falharam.push(a))));
+  }
+
+  // repescagem, uma por vez: o que caiu por concorrência costuma passar aqui
+  for (const a of falharam) {
+    await cache.add(a).catch(() => { /* sem essa fala; a voz do aparelho cobre */ });
+  }
+}
+
 // As gravações da narração são opcionais: se ainda não foram geradas, o app
-// cai na voz do próprio aparelho. Por isso elas entram num addAll separado,
+// cai na voz do próprio aparelho. Por isso elas entram num passo separado,
 // que pode falhar sem derrubar a instalação do que é essencial.
 async function guardarNarracao(cache) {
   try {
@@ -30,7 +62,7 @@ async function guardarNarracao(cache) {
     const arquivos = [...new Set(Object.values(frases || {}))]
       .map((nome) => `./audio/falas/${nome}.mp3`);
     await cache.put('./audio/falas/indice.json', copia);
-    await Promise.all(arquivos.map((a) => cache.add(a).catch(() => {})));
+    await guardarEmLotes(cache, arquivos);
   } catch {
     /* sem gravações: segue com a voz do aparelho */
   }

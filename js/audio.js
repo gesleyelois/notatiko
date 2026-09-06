@@ -20,10 +20,50 @@ const NOTA = {
 // Lá maior: as três notas que aparecem em quase todo efeito
 const TRIADE = [NOTA.LA4, NOTA.DO5, NOTA.MI5];
 
+/* Os efeitos também tocam de arquivo.
+
+   Enquanto eram Web Audio, dependiam de a trilha estar tocando: no iOS é o
+   <audio> que põe a sessão em modo mídia, e sem ele a chavinha do iPhone
+   silencia o Web Audio. Bastou dar ao usuário a opção de calar a música
+   para os efeitos sumirem junto — dependência frágil, invisível no desktop.
+
+   Os arquivos são a mesma síntese renderizada (ver ferramentas/), todos com
+   um ganho único, para a mixagem entre eles sobreviver. A síntese ao vivo
+   fica como reserva.                                                      */
+
+const EFEITOS_EM_ARQUIVO = ['toque', 'abrir', 'fechar', 'pouso', 'tirar',
+  'excluir', 'guardar', 'tatica', 'revelar', 'impacto', 'brilho'];
+// devolve o nível de mixagem original: o pico da síntese era 0.388 e o
+// arquivo foi normalizado para 0.89
+const VOLUME_EFEITOS = 0.436;
+
 class Efeitos {
   constructor() {
     this.ctx = null;
     this.ligado = true;
+    this.arquivos = new Map();
+    this.naReserva = false;
+  }
+
+  // Um elemento por efeito, clonado quando o mesmo som se repete antes de
+  // acabar — assim dois toques seguidos se sobrepõem em vez de se cortarem.
+  _tocarArquivo(tipo) {
+    if (this.naReserva || !EFEITOS_EM_ARQUIVO.includes(tipo)) return false;
+    try {
+      let base = this.arquivos.get(tipo);
+      if (!base) {
+        base = new Audio(`audio/efeitos/${tipo}.mp3`);
+        base.preload = 'auto';
+        this.arquivos.set(tipo, base);
+      }
+      const alvo = (base.paused || base.ended) ? base : base.cloneNode();
+      alvo.volume = VOLUME_EFEITOS;
+      alvo.currentTime = 0;
+      alvo.play()?.catch(() => { this.naReserva = true; });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   _contexto() {
@@ -68,6 +108,7 @@ class Efeitos {
 
   tocar(tipo) {
     if (!this.ligado) return;
+    if (this._tocarArquivo(tipo)) return;
 
     switch (tipo) {
       // seleção: uma nota só, curta e alta

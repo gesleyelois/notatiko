@@ -80,15 +80,21 @@ vira arquivo é renderização dessa mesma síntese.
   bumbo, chimbal, baixo sincopado, arpejo e naipe sustentado. Toca de
   `audio/trilha.mp3` (140 KB, 8,9 s em loop), renderizado a partir da classe
   `TrilhaSintetica`. Se o arquivo não carregar, a síntese ao vivo assume.
-- **Efeitos** — sintetizados ao vivo, todos derivados da mesma escala da
-  trilha, então qualquer combinação soa consonante.
+- **Efeitos** — 11 sons derivados da mesma escala da trilha, então qualquer
+  combinação soa consonante. Tocam de `audio/efeitos/` (51 KB no total),
+  renderizados da própria síntese com um ganho único, para a mixagem entre
+  eles sobreviver. A síntese ao vivo fica como reserva.
 
-### Por que a trilha é arquivo e os efeitos não
+### Por que tudo virou arquivo
 
 No iOS o Web Audio sai pelo canal da campainha, e a chavinha lateral do iPhone
-o silencia; um `<audio>` sai pelo canal de mídia e não é afetado. Com a trilha
-em `<audio>`, a sessão de áudio do sistema passa a ser a de mídia — o que
-devolve o som dos efeitos junto, sem precisar transformá-los em arquivo.
+o silencia; um `<audio>` sai pelo canal de mídia e não é afetado.
+
+A trilha em `<audio>` chegou a resolver os efeitos de tabela — enquanto ela
+tocava, a sessão do sistema ficava em modo mídia e o Web Audio voltava a ser
+ouvido. Mas era dependência frágil: bastou o painel do som permitir calar a
+música para os efeitos sumirem junto. Por isso eles também viraram arquivo, e
+o Web Audio deixou de estar no caminho crítico.
 
 ### Gerando a trilha
 

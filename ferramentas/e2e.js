@@ -438,12 +438,46 @@ const TESTES = [
     };
   }],
 
+  ['os efeitos não dependem da trilha estar tocando', async () => {
+    // No iOS quem põe a sessão de áudio em modo mídia é um <audio> tocando.
+    // Enquanto os efeitos eram Web Audio, calar a música os calava junto.
+    const m = await import('../js/audio.js');
+    toque($('#btn-som'));
+    await ate(() => $('#painel-som'), { oque: 'o painel do som' });
+    const trilha = $('.canal[data-canal="trilha"]');
+    if (trilha.classList.contains('ligado')) { toque(trilha); await espera(500); }
+    document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 8 }));
+    await espera(300);
+
+    m.efeitos.tocar('guardar');
+    await espera(400);
+    const el = m.efeitos.arquivos.get('guardar');
+
+    toque($('#btn-som'));                      // devolve a trilha
+    await ate(() => $('#painel-som'));
+    if (!$('.canal[data-canal="trilha"]').classList.contains('ligado')) {
+      toque($('.canal[data-canal="trilha"]'));
+      await espera(300);
+    }
+    document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 9 }));
+    await espera(300);
+
+    return {
+      trilhaEstavaParada: true,
+      efeitoVeioDeArquivo: !!el && el.src.endsWith('guardar.mp3'),
+      efeitoTocou: !!el && el.currentTime > 0,
+      semContextoWebAudio: !m.efeitos.ctx,
+      ok: !!el && el.src.endsWith('guardar.mp3') && el.currentTime > 0 && !m.efeitos.ctx,
+    };
+  }],
+
   ['funciona offline: tudo que o app precisa está no cache', async () => {
     const nomes = await caches.keys();
     if (!nomes.length) return { cache: 'nenhum', ok: false, nota: 'o Service Worker ainda não instalou' };
     const c = await caches.open(nomes[0]);
     const urls = (await c.keys()).map((k) => new URL(k.url).pathname);
-    const precisa = ['/index.html', '/css/style.css', '/js/app.js', '/js/audio.js', '/js/falas.js', '/audio/trilha.mp3'];
+    const precisa = ['/index.html', '/css/style.css', '/js/app.js', '/js/audio.js',
+      '/js/falas.js', '/audio/trilha.mp3', '/audio/efeitos/guardar.mp3'];
     const faltando = precisa.filter((p) => !urls.some((u) => u.endsWith(p)));
     return {
       cache: nomes[0], itens: urls.length,
