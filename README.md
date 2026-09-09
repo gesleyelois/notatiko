@@ -57,6 +57,8 @@ Sai uma imagem justamente porque não há servidor: imagem qualquer um vê, no
 grupo do WhatsApp, sem instalar nada. Não é preciso ter o NoTatiko do outro
 lado.
 
+![A escalação compartilhada](docs/escalacao-compartilhada.jpg)
+
 São 1080×1620: escudo e nome no topo, as duas medalhas do placar, e o gramado
 ocupando o resto com **as cartas dos onze** — a mesma carta da tela, com o
 chanfro, a liga metálica do tier, a nota com a posição, a foto, o nome e as
@@ -71,6 +73,11 @@ linhas saem do mesmo desenho do `index.html`; a carta é descrita em `em`,
 como no CSS, e o `em` sai do tamanho do slot — as proporções são as da tela
 em qualquer tamanho de saída. Nota, tier e improviso chegam prontos do
 domínio: a imagem nunca discorda do campo.
+
+Vaga aberta vira carta vazia, com a etiqueta da posição — o time pela metade
+se compartilha do mesmo jeito:
+
+![Um time pela metade](docs/escalacao-compartilhada-parcial.jpg)
 
 ### O que ficou de fora, e por quê
 
