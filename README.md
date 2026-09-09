@@ -18,8 +18,8 @@ do navegador.
 - **19 táticas** — 10 formações com variações (4-4-2 Losango, 4-3-3 Falso 9, 3-5-2 Alas ofensivos…), escolhidas pelo desenho do time.
 - **Força e Sintonia** — duas medalhas no placar, com o arco contando o valor.
   Toque para ver de onde cada número saiu.
-- **Compartilhar** — a escalação vira uma imagem do campo, com os onze nas
-  posições, as notas e a marca do clube.
+- **Compartilhar** — a escalação vira uma imagem do campo, com as cartas dos
+  onze nas posições da tática.
 
 ## Como as notas funcionam
 
@@ -57,22 +57,43 @@ Sai uma imagem justamente porque não há servidor: imagem qualquer um vê, no
 grupo do WhatsApp, sem instalar nada. Não é preciso ter o NoTatiko do outro
 lado.
 
-São 1080×1620 — escudo e nome no topo, as duas medalhas do placar, o gramado
-com os onze nas posições da tática (nota, função e o âmbar de quem está
-improvisando) e a marca do clube no canto de baixo à esquerda, o pedaço de
-gramado que nenhuma tática ocupa.
+![A escalação compartilhada](docs/escalacao-compartilhada.jpg)
+
+São 1080×1620: escudo e nome no topo, as duas medalhas do placar, e o gramado
+ocupando o resto com **as cartas dos onze** — a mesma carta da tela, com o
+chanfro, a liga metálica do tier, a nota com a posição, a foto, o nome e as
+seis características. A pílula debaixo de cada carta diz a vaga da tática, em
+âmbar quando o jogador está improvisando ali; a carta diz o que ele é, a
+pílula diz onde ele está jogando.
 
 O campo é desenhado num `canvas`, não fotografado da tela: a tela do celular
 é estreita, tem placar, elenco e barra do sistema, e o que se manda para o
 grupo tem que caber num quadro só, do mesmo tamanho em qualquer aparelho. As
-linhas saem do mesmo desenho do `index.html`, e nota, tier e improviso
-chegam prontos do domínio — a imagem nunca discorda da tela.
+linhas saem do mesmo desenho do `index.html`; a carta é descrita em `em`,
+como no CSS, e o `em` sai do tamanho do slot — as proporções são as da tela
+em qualquer tamanho de saída. Nota, tier e improviso chegam prontos do
+domínio: a imagem nunca discorda do campo.
 
-A marca do clube já morou no círculo central, em luminosidade, como no
-gramado do app. Ali ela era fundo: sumia atrás das linhas e do jogador do
-meio. Numa imagem que vai para o grupo, a marca é para ser vista — então foi
-para o canto, inteira, sem o recorte de escudo que o placar usa: quem
-desenhou o escudo redondo quer ele redondo.
+Vaga aberta vira carta vazia, com a etiqueta da posição — o time pela metade
+se compartilha do mesmo jeito:
+
+![Um time pela metade](docs/escalacao-compartilhada-parcial.jpg)
+
+### O que ficou de fora, e por quê
+
+- **A marca no gramado.** Ela já morou no círculo central, em luminosidade
+  como no app, e depois no canto do campo. Nos dois lugares disputava espaço
+  com as cartas — e o escudo já está no topo, do lado do nome. Uma vez só
+  basta.
+- **O recorte da marca no formato do brasão.** O placar do app corta em forma
+  de escudo porque ali ele é um emblema de 34px; numa imagem que representa o
+  clube, escudo redondo perdia os lados e faixa com o ano de fundação sumia.
+  A marca agora vai inteira numa placa quadrada de pontas arredondadas, que
+  não corta nem obriga a encolher. A placa toma a cor de fundo da marca
+  quando ela tem uma só — a borda do arquivo desaparece e o conjunto lê como
+  um emblema só.
+- **A contagem de "x de 11 em campo".** Quem olha a imagem conta os onze
+  sozinho. O rodapé ficou só com a assinatura, e o lugar dela virou campo.
 
 ## Rodando localmente
 
@@ -218,10 +239,10 @@ Com o app aberto, no console do navegador:
 const t = await import('./ferramentas/e2e.js'); await t.rodar();
 ```
 
-São 27 testes ponta a ponta contra o DOM e o IndexedDB de verdade: fundar o
+São 28 testes ponta a ponta contra o DOM e o IndexedDB de verdade: fundar o
 clube, criar jogador pela carta, moldar o radar, escalar, trocar de tática,
 sobreviver a uma recarga, o campo ocupar a tela, não sobrar comportamento de
-página web, a escalação virar imagem do tamanho certo, o escudo aparecer no
-canto do campo (conferido pixel a pixel) e o cache offline estar completo.
-Dois deles recarregam a página — depois da recarga, continue com
-`await t.continuar()`.
+página web, a escalação virar imagem do tamanho certo, o escudo sair inteiro
+no topo e os onze irem como carta (os dois conferidos pixel a pixel) e o
+cache offline estar completo. Dois deles recarregam a página — depois da
+recarga, continue com `await t.continuar()`.
