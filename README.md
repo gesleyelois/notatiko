@@ -18,6 +18,8 @@ do navegador.
 - **19 táticas** — 10 formações com variações (4-4-2 Losango, 4-3-3 Falso 9, 3-5-2 Alas ofensivos…), escolhidas pelo desenho do time.
 - **Força e Sintonia** — duas medalhas no placar, com o arco contando o valor.
   Toque para ver de onde cada número saiu.
+- **Compartilhar** — a escalação vira uma imagem do campo, com os onze nas
+  posições, as notas e a marca do clube.
 
 ## Como as notas funcionam
 
@@ -43,6 +45,35 @@ goleiro não é alternativa de ninguém, nem ninguém é alternativa de goleiro.
 - **Sintonia** — o quanto o time joga onde sabe. Posição principal vale 100%,
   uma segunda função 85%, mesmo setor 60%, setor vizinho 25%.
 
+## Compartilhando
+
+Não há servidor, conta nem link: o app desenha a escalação e entrega à folha
+de partilha do sistema — o mesmo caminho de uma foto. Quem escolhe o destino
+é você, e nada sai por conta própria. Onde não existe folha de partilha (a
+maioria dos navegadores de computador), a imagem é baixada; no celular, dá
+para segurar na prévia e salvar direto na galeria.
+
+Sai uma imagem justamente porque não há servidor: imagem qualquer um vê, no
+grupo do WhatsApp, sem instalar nada. Não é preciso ter o NoTatiko do outro
+lado.
+
+São 1080×1620 — escudo e nome no topo, as duas medalhas do placar, o gramado
+com os onze nas posições da tática (nota, função e o âmbar de quem está
+improvisando) e a marca do clube no canto de baixo à esquerda, o pedaço de
+gramado que nenhuma tática ocupa.
+
+O campo é desenhado num `canvas`, não fotografado da tela: a tela do celular
+é estreita, tem placar, elenco e barra do sistema, e o que se manda para o
+grupo tem que caber num quadro só, do mesmo tamanho em qualquer aparelho. As
+linhas saem do mesmo desenho do `index.html`, e nota, tier e improviso
+chegam prontos do domínio — a imagem nunca discorda da tela.
+
+A marca do clube já morou no círculo central, em luminosidade, como no
+gramado do app. Ali ela era fundo: sumia atrás das linhas e do jogador do
+meio. Numa imagem que vai para o grupo, a marca é para ser vista — então foi
+para o canto, inteira, sem o recorte de escudo que o placar usa: quem
+desenhou o escudo redondo quer ele redondo.
+
 ## Rodando localmente
 
 ```bash
@@ -62,6 +93,7 @@ Sem framework, sem build, sem dependências: HTML, CSS e JavaScript com módulos
 | `js/app.js` | Estado, renderização, arrastar e soltar, animações |
 | `js/taticas.js` | As 19 táticas e suas coordenadas em campo |
 | `js/db.js` | Persistência em IndexedDB |
+| `js/compartilhar.js` | A imagem da escalação, desenhada no `canvas` |
 | `js/audio.js` | Trilha sonora, efeitos das ações e narração |
 | `audio/trilha.mp3` | O loop da trilha, renderizado da própria síntese |
 | `js/falas.js` | As 42 frases da narração |
@@ -69,7 +101,9 @@ Sem framework, sem build, sem dependências: HTML, CSS e JavaScript com módulos
 | `sw.js` | Service Worker — cache para funcionar offline |
 
 Os dados ficam no próprio aparelho (IndexedDB). Nada é enviado para servidor
-nenhum: sem contas, sem back-end, sem rastreio.
+nenhum: sem contas, sem back-end, sem rastreio. Compartilhar também não muda
+isso — a imagem é desenhada no aparelho e entregue à folha de partilha do
+sistema, que é quem pergunta para onde ela vai.
 
 ## Som
 
@@ -184,8 +218,10 @@ Com o app aberto, no console do navegador:
 const t = await import('./ferramentas/e2e.js'); await t.rodar();
 ```
 
-São 14 testes ponta a ponta contra o DOM e o IndexedDB de verdade: fundar o
+São 27 testes ponta a ponta contra o DOM e o IndexedDB de verdade: fundar o
 clube, criar jogador pela carta, moldar o radar, escalar, trocar de tática,
 sobreviver a uma recarga, o campo ocupar a tela, não sobrar comportamento de
-página web e o cache offline estar completo. Dois deles recarregam a página —
-depois da recarga, continue com `await t.continuar()`.
+página web, a escalação virar imagem do tamanho certo, o escudo aparecer no
+canto do campo (conferido pixel a pixel) e o cache offline estar completo.
+Dois deles recarregam a página — depois da recarga, continue com
+`await t.continuar()`.

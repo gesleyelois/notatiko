@@ -362,9 +362,9 @@ input, textarea, [contenteditable] {
   100% { transform: scale(1); }
 }
 
-/* ---- som: só o glifo, sem caixa ---- */
+/* ---- som e partilha: só o glifo, sem caixa ---- */
 
-.btn-som {
+.btn-som, .btn-hud {
   flex-shrink: 0;
   width: 30px;
   height: var(--medalha);
@@ -374,8 +374,8 @@ input, textarea, [contenteditable] {
   color: var(--texto-3);
   transition: transform .12s, color .15s;
 }
-.btn-som svg { width: 17px; height: 17px; }
-.btn-som:active { transform: scale(.88); }
+.btn-som svg, .btn-hud svg { width: 17px; height: 17px; }
+.btn-som:active, .btn-hud:active { transform: scale(.88); }
 .btn-som.ativo { color: var(--acento); filter: drop-shadow(0 0 5px rgba(0, 224, 122, .5)); }
 
 /* =========================================================
@@ -2307,10 +2307,10 @@ input[type=range]::-moz-range-thumb {
   transform: translate(-50%, -50%);
 }
 
-.btn-som, .medalha, .placa-tatica, .folha-fechar, .aba, .emblema, .chip-pos {
+.btn-som, .btn-hud, .medalha, .placa-tatica, .folha-fechar, .aba, .emblema, .chip-pos {
   position: relative;
 }
-.btn-som::after, .medalha::after, .placa-tatica::after,
+.btn-som::after, .btn-hud::after, .medalha::after, .placa-tatica::after,
 .folha-fechar::after, .aba::after, .emblema::after, .chip-pos::after {
   content: '';
   position: absolute;
@@ -2761,3 +2761,108 @@ input[type=range]::-moz-range-thumb {
 @media (prefers-reduced-motion: reduce) {
   .item-trilho.recusa { animation: none; }
 }
+
+/* =========================================================
+   Compartilhar — a prévia e a saída
+
+   A prévia vem antes do botão: o que está na tela é exatamente o que vai
+   sair, e embaixo dela a linha diz o tamanho do que sai — a tática e
+   quantos estão em campo. Compartilhar às cegas é o que dá vontade de não
+   compartilhar.
+   ========================================================= */
+
+.opcao-partilha {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: var(--raio);
+  background: var(--sup-1);
+  box-shadow: inset 0 0 0 1px var(--borda);
+  text-align: left;
+  transition: transform .14s ease, box-shadow .18s ease;
+}
+.opcao-partilha:active {
+  transform: scale(.985);
+  box-shadow: inset 0 0 0 1px var(--borda-clara);
+}
+
+.opcao-icone {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--acento-suave);
+  color: var(--acento);
+}
+.opcao-icone svg { width: 21px; height: 21px; }
+
+.opcao-txt { flex: 1; min-width: 0; }
+.opcao-txt b {
+  display: block;
+  font-family: var(--fonte-cond);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+}
+.opcao-txt small {
+  display: block;
+  margin-top: 3px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--texto-2);
+}
+.opcao-txt i {
+  display: block;
+  margin-top: 6px;
+  font-style: normal;
+  font-family: var(--fonte-cond);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .9px;
+  text-transform: uppercase;
+  color: var(--texto-3);
+}
+
+.opcao-seta { flex-shrink: 0; width: 20px; height: 20px; color: var(--texto-3); }
+
+/* a prévia é a promessa: o que está aqui é exatamente o que vai sair */
+.previa-partilha { margin-bottom: 4px; text-align: center; }
+.previa-partilha img {
+  width: 100%;
+  max-width: 280px;
+  margin: 0 auto;
+  border-radius: var(--raio);
+  box-shadow: var(--sombra);
+  /* a única imagem do app que quer o menu do sistema: é segurando nela que
+     se salva na galeria, sem passar pela folha de partilha */
+  -webkit-touch-callout: default;
+}
+.previa-partilha small {
+  display: block;
+  margin-top: 9px;
+  font-size: 11.5px;
+  color: var(--texto-3);
+}
+/* o vazio guarda a proporção da imagem (2:3), para a folha não pular de
+   altura quando o campo terminar de ser desenhado */
+.previa-vazia {
+  max-width: 280px;
+  aspect-ratio: 2 / 3;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--raio);
+  background: var(--sup-1);
+  box-shadow: inset 0 0 0 1px var(--borda);
+  font-size: 12.5px;
+  color: var(--texto-3);
+}
+

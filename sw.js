@@ -1,4 +1,4 @@
-const CACHE_NAME = 'notatiko-v29';
+const CACHE_NAME = 'notatiko-v30';
 const ARQUIVOS_ESSENCIAIS = [
   './',
   './index.html',
@@ -7,6 +7,7 @@ const ARQUIVOS_ESSENCIAIS = [
   './js/app.js',
   './js/db.js',
   './js/audio.js',
+  './js/compartilhar.js',
   './js/falas.js',
   './js/icones.js',
   './js/taticas.js',

@@ -569,13 +569,84 @@ const TESTES = [
     };
   }],
 
+  ['a escalação vira imagem, do tamanho de um story', async () => {
+    toque($('#btn-compartilhar'));
+    await ate(() => $('#previa-partilha img'), { oque: 'a prévia da escalação', limite: 20000 });
+    const img = $('#previa-partilha img');
+    await ate(() => img.naturalWidth > 0, { oque: 'a imagem carregar' });
+
+    const medido = {
+      largura: img.naturalWidth,
+      altura: img.naturalHeight,
+      temSaida: !!$('#enviar-escalacao'),
+      // a imagem tem que poder ser salva segurando o dedo: é o caminho de
+      // quem não usa a folha de partilha
+      menuDoSistema: getComputedStyle(img).webkitTouchCallout,
+    };
+    toque($('#folha-fechar'));
+    await espera(400);
+    return {
+      ...medido,
+      ok: medido.largura === 1080 && medido.altura === 1620
+          && medido.temSaida && medido.menuDoSistema !== 'none',
+    };
+  }],
+
+  ['o escudo aparece no canto do campo, e não apagado no meio', async () => {
+    const mod = await import('../js/compartilhar.js');
+    const { slotsDaTatica } = await import('../js/taticas.js');
+
+    // um escudo de cor única, para poder ser procurado pixel a pixel
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 120;
+    const c2 = cv.getContext('2d');
+    c2.fillStyle = '#ff00d4';
+    c2.fillRect(0, 0, 120, 120);
+
+    const arquivo = await mod.imagemDaEscalacao({
+      time: { nome: 'TESTE', escudo: cv.toDataURL('image/png') },
+      tatica: { formacao: '4-3-3', variacao: 'Clássico' },
+      forca: 70, sintonia: 80,
+      slots: slotsDaTatica('4-3-3', 'Clássico').map((s) => ({ x: s.x, y: s.y, pos: s.pos, jogador: null })),
+    });
+
+    const img = new Image();
+    img.src = URL.createObjectURL(arquivo);
+    await new Promise((r) => { img.onload = r; });
+    const leitura = document.createElement('canvas');
+    leitura.width = img.naturalWidth;
+    leitura.height = img.naturalHeight;
+    leitura.getContext('2d').drawImage(img, 0, 0);
+    URL.revokeObjectURL(img.src);
+
+    const cor = (x, y) => {
+      const [r, g, b] = leitura.getContext('2d').getImageData(x, y, 1, 1).data;
+      return { r, g, b };
+    };
+    const ehMagenta = ({ r, g, b }) => r > 180 && g < 90 && b > 140;
+
+    // o campo começa em 200 e mede 1000x1333: o canto de baixo à esquerda
+    // fica por volta de (110, 1430); o meio, em (540, 866)
+    const canto = cor(110, 1430);
+    const meio = cor(540, 866);
+    const medido = {
+      canto, meio,
+      // o gramado do meio continua gramado
+      meioEhGrama: meio.g > meio.r && meio.g > meio.b,
+    };
+    return {
+      ...medido,
+      ok: ehMagenta(canto) && medido.meioEhGrama && !ehMagenta(meio),
+    };
+  }],
+
   ['funciona offline: tudo que o app precisa está no cache', async () => {
     const nomes = await caches.keys();
     if (!nomes.length) return { cache: 'nenhum', ok: false, nota: 'o Service Worker ainda não instalou' };
     const c = await caches.open(nomes[0]);
     const urls = (await c.keys()).map((k) => new URL(k.url).pathname);
     const precisa = ['/index.html', '/css/style.css', '/js/app.js', '/js/audio.js',
-      '/js/falas.js', '/audio/trilha.mp3', '/audio/efeitos/guardar.mp3'];
+      '/js/compartilhar.js', '/js/falas.js', '/audio/trilha.mp3', '/audio/efeitos/guardar.mp3'];
     const faltando = precisa.filter((p) => !urls.some((u) => u.endsWith(p)));
     return {
       cache: nomes[0], itens: urls.length,

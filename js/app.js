@@ -2,6 +2,7 @@ import { DB } from './db.js';
 import { efeitos, trilha, narrador } from './audio.js';
 import { ic } from './icones.js';
 import { TATICAS, TATICA_PADRAO, slotsDaTatica } from './taticas.js';
+import { entregar, imagemDaEscalacao } from './compartilhar.js';
 
 /* =========================================================
    Domínio
@@ -209,6 +210,30 @@ const slotsFormacao = () => slotsDaTatica(estado.escalacao.formacao, estado.esca
 const jogadorPorId = (id) => estado.jogadores.find((j) => j.id === id) || null;
 const jogadorNoSlot = (slotId) => jogadorPorId(estado.escalacao.slots[slotId]);
 const idsEscalados = () => new Set(Object.values(estado.escalacao.slots).filter(Boolean));
+
+/* Uma escalação só entra no estado depois de conferida: a tática e a
+   variação têm que existir, as vagas têm que ser as daquela tática e cada
+   uma só vale apontando para alguém que está no elenco.
+
+   Serve para o que veio do banco (escalações antigas não guardavam a
+   variação, e jogadores excluídos deixavam vaga apontando para o nada) e
+   para o que veio de outra pessoa num arquivo.                           */
+function normalizarEscalacao(escalacao, jogadores) {
+  if (!escalacao || !TATICAS[escalacao.formacao]) return { ...TATICA_PADRAO, slots: {} };
+
+  const { formacao } = escalacao;
+  const variacao = TATICAS[formacao].variacoes[escalacao.variacao]
+    ? escalacao.variacao
+    : Object.keys(TATICAS[formacao].variacoes)[0];
+
+  const vagas = new Set(slotsDaTatica(formacao, variacao).map((s) => s.id));
+  const elenco = new Set(jogadores.map((j) => j.id));
+  const slots = {};
+  for (const [slotId, id] of Object.entries(escalacao.slots || {})) {
+    if (vagas.has(slotId) && elenco.has(id)) slots[slotId] = id;
+  }
+  return { formacao, variacao, slots };
+}
 
 // Força = média das notas NA POSIÇÃO em que cada um foi escalado, não da nota
 // natural. Escalar alguém fora de posição custa força de verdade.
@@ -1942,6 +1967,115 @@ async function excluirJogador(j) {
 }
 
 /* =========================================================
+   Compartilhar — a escalação vira imagem
+
+   Não há servidor nem conta, então o que se manda para alguém é uma
+   imagem: ela abre em qualquer aparelho, no grupo do WhatsApp, sem o
+   outro lado precisar ter o app. O NoTatiko desenha e entrega para a
+   folha de partilha do sistema, que é quem pergunta para onde vai —
+   nada sobe para lugar nenhum.                                         */
+
+// Tudo que a imagem precisa, já resolvido: nota, tier e improviso saem
+// daqui prontos, para o desenho nunca discordar do que está na tela.
+function retratoDaEscalacao() {
+  return slotsFormacao().map((slot) => {
+    const j = jogadorNoSlot(slot.id);
+    const nota = j ? notaNaPosicao(j, slot.pos) : null;
+    return {
+      x: slot.x,
+      y: slot.y,
+      pos: slot.pos,
+      jogador: j && {
+        apelido: j.apelido,
+        foto: j.foto || '',
+        nota,
+        tier: tierDe(nota),
+        fora: !atuaEm(j, slot.pos),
+      },
+    };
+  });
+}
+
+const nomeDoClube = () => estado.time?.nome || 'Meu Time';
+
+/* A imagem é desenhada quando a folha abre, não quando o botão é tocado.
+
+   No iOS a folha de partilha só abre no embalo do toque, e desenhar o
+   campo leva alguns quadros: gerar ali gastava o gesto no caminho e o
+   compartilhamento virava download silencioso.                          */
+let escalacaoEmImagem = null;
+let urlDaPrevia = null;
+
+async function prepararImagem() {
+  escalacaoEmImagem = await imagemDaEscalacao({
+    time: estado.time,
+    tatica: { formacao: estado.escalacao.formacao, variacao: estado.escalacao.variacao },
+    forca: notaTime(),
+    sintonia: idsEscalados().size ? sintonia() : null,
+    slots: retratoDaEscalacao(),
+  });
+  return escalacaoEmImagem;
+}
+
+function folhaCompartilhar() {
+  const escalados = idsEscalados().size;
+  const total = slotsFormacao().length;
+  const { formacao, variacao } = estado.escalacao;
+
+  escalacaoEmImagem = null;
+
+  abrirFolha({
+    titulo: 'Compartilhar',
+    corpo: `
+      <div class="previa-partilha" id="previa-partilha">
+        <div class="previa-vazia">Desenhando o campo…</div>
+      </div>
+
+      <button class="opcao-partilha" id="enviar-escalacao">
+        <span class="opcao-icone">${ic.partilha}</span>
+        <span class="opcao-txt">
+          <b>Mandar a escalação</b>
+          <small>Vai como imagem, então serve para qualquer um — não precisa ter o app.</small>
+          <i>${formacao} ${variacao} · ${escalados} de ${total}</i>
+        </span>
+        <span class="opcao-seta">${ic.seta}</span>
+      </button>
+
+      <p class="ajuda" style="margin-top:16px">
+        Nada é enviado por conta própria: o app desenha a imagem e entrega
+        para você escolher o destino.
+      </p>
+      <div style="height:10px"></div>`,
+    aoMontar: () => {
+      const previa = $('#previa-partilha');
+
+      prepararImagem().then((arquivo) => {
+        if (!$('#previa-partilha')) return;      // a folha fechou antes de ficar pronta
+        if (urlDaPrevia) URL.revokeObjectURL(urlDaPrevia);
+        urlDaPrevia = URL.createObjectURL(arquivo);
+        previa.innerHTML = `
+          <img src="${urlDaPrevia}" alt="Prévia da escalação">
+          <small>É esta imagem que sai. Segure nela para salvar direto.</small>`;
+      }).catch(() => {
+        previa.innerHTML = '<div class="previa-vazia">Não deu para desenhar a escalação.</div>';
+      });
+
+      $('#enviar-escalacao').onclick = async () => {
+        efeitos.tocar('toque');
+        const arquivo = escalacaoEmImagem || await prepararImagem();
+        const fim = await entregar(arquivo, {
+          titulo: `Escalação do ${nomeDoClube()}`,
+          texto: `${nomeDoClube()} — ${formacao} ${variacao}`,
+        });
+        if (fim === 'baixado') toast('Imagem salva no aparelho');
+        if (fim === 'compartilhado') toast('Escalação enviada');
+      };
+    },
+  });
+}
+
+
+/* =========================================================
    Confirmação
    ========================================================= */
 
@@ -2189,6 +2323,9 @@ document.addEventListener('visibilitychange', () => {
 $('#btn-time').addEventListener('click', folhaTime);
 $('#btn-som').addEventListener('click', abrirPainelSom);
 
+$('#btn-compartilhar').innerHTML = ic.partilha;
+$('#btn-compartilhar').addEventListener('click', () => { limparSelecao(); folhaCompartilhar(); });
+
 $('#gramado').addEventListener('click', (e) => {
   if (!e.target.closest('.slot')) limparSelecao();
 });
@@ -2219,17 +2356,7 @@ async function iniciar() {
   narrador.ligado = estado.audio.vozes;
   estado.time = time;
   estado.jogadores = await migrarGoleiros(jogadores);
-  if (escalacao && TATICAS[escalacao.formacao]) {
-    // escalações antigas não guardavam a variação
-    const variacao = TATICAS[escalacao.formacao].variacoes[escalacao.variacao]
-      ? escalacao.variacao
-      : Object.keys(TATICAS[escalacao.formacao].variacoes)[0];
-    estado.escalacao = { formacao: escalacao.formacao, variacao, slots: escalacao.slots || {} };
-    // limpa referências a jogadores excluídos
-    for (const [slotId, id] of Object.entries(estado.escalacao.slots)) {
-      if (!id || !jogadores.some((j) => j.id === id)) delete estado.escalacao.slots[slotId];
-    }
-  }
+  estado.escalacao = normalizarEscalacao(escalacao, estado.jogadores);
 
   renderTudo();
   prepararDesbloqueioDeAudio();
