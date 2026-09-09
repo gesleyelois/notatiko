@@ -680,25 +680,27 @@ export async function imagemDaEscalacao({ time, tatica, forca, sintonia, slots }
   ctx.fillStyle = fundo;
   ctx.fillRect(0, 0, L, A);
 
-  /* ---- topo: o brasão do clube ----
+  /* ---- topo: a marca do clube ----
 
-     O escudo é uma placa em forma de brasão — a mesma silhueta do emblema
-     do placar do app — com a marca do clube inteira dentro dela.
-
-     Recortar a marca NO formato do brasão foi a primeira tentativa e
-     estava errado: escudo redondo perde os lados, e faixa com o ano de
-     fundação embaixo é a primeira coisa a sumir. Aqui o brasão é moldura,
-     não tesoura: a marca é reduzida até caber no maior quadrado que cabe
-     dentro da silhueta, e nada é cortado.                               */
+     Uma placa quadrada de pontas arredondadas, com a marca inteira
+     dentro. O caminho até aqui passou por duas tentativas piores:
+     recortar a marca no formato de brasão comia os lados do escudo
+     redondo e a faixa com o ano de fundação, e usar a silhueta de brasão
+     como moldura obrigava a marca a encolher para caber no afunilamento
+     do bico. O quadrado arredondado não tira nada e não encolhe nada — a
+     folga é só o suficiente para as pontas da marca passarem por dentro
+     do arredondamento.                                                  */
   const t = 144;
   const topoEscudo = 18;
+  const raio = 28;
+  const folga = 10;
   const marca = escudo ? fundoDaMarca(escudo) : null;
 
   ctx.save();
   ctx.shadowColor = 'rgba(0,0,0,.55)';
   ctx.shadowBlur = 20;
   ctx.shadowOffsetY = 6;
-  caminhoEscudo(ctx, MARGEM, topoEscudo, t);
+  caminhoArredondado(ctx, MARGEM, topoEscudo, t, t, raio);
   if (marca) {
     ctx.fillStyle = marca.css;
   } else {
@@ -711,17 +713,12 @@ export async function imagemDaEscalacao({ time, tatica, forca, sintonia, slots }
   ctx.restore();
 
   ctx.save();
-  caminhoEscudo(ctx, MARGEM, topoEscudo, t);
+  caminhoArredondado(ctx, MARGEM, topoEscudo, t, t, raio);
   ctx.clip();
   if (escudo) {
-    /* O maior quadrado que cabe no brasão: 0,68 do lado, com o topo em
-       6%. Crescer além disso põe a base da marca na parte em que a
-       silhueta afunila para o bico — e é ali que mora a faixa com o ano
-       de fundação, a primeira coisa a ser comida.                      */
-    const dentro = t * .68;
-    conter(ctx, escudo, MARGEM + (t - dentro) / 2, topoEscudo + t * .06, dentro, dentro);
+    conter(ctx, escudo, MARGEM + folga, topoEscudo + folga, t - folga * 2, t - folga * 2);
   } else {
-    // sem marca, a silhueta vazia segura o lugar
+    // sem marca, a silhueta de brasão segura o lugar
     ctx.strokeStyle = 'rgba(255,255,255,.28)';
     ctx.lineWidth = 4;
     caminhoEscudo(ctx, MARGEM + t * .28, topoEscudo + t * .2, t * .44);
@@ -729,9 +726,9 @@ export async function imagemDaEscalacao({ time, tatica, forca, sintonia, slots }
   }
   ctx.restore();
 
-  // o filete que fecha o brasão: escuro sobre placa clara, claro sobre escura
+  // o filete que fecha a placa: escuro sobre placa clara, claro sobre escura
   ctx.save();
-  caminhoEscudo(ctx, MARGEM, topoEscudo, t);
+  caminhoArredondado(ctx, MARGEM, topoEscudo, t, t, raio);
   ctx.strokeStyle = marca?.claro ? 'rgba(0,0,0,.3)' : 'rgba(255,255,255,.18)';
   ctx.lineWidth = 3;
   ctx.stroke();

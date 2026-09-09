@@ -88,10 +88,10 @@ se compartilha do mesmo jeito:
 - **O recorte da marca no formato do brasão.** O placar do app corta em forma
   de escudo porque ali ele é um emblema de 34px; numa imagem que representa o
   clube, escudo redondo perdia os lados e faixa com o ano de fundação sumia.
-  Agora o brasão é moldura, não tesoura: a silhueta é a mesma do placar, e a
-  marca vai inteira dentro dela, reduzida até caber no maior quadrado que a
-  silhueta comporta. A placa ainda toma a cor de fundo da marca quando ela
-  tem uma só — o quadrado do arquivo desaparece e sobra o brasão.
+  A marca agora vai inteira numa placa quadrada de pontas arredondadas, que
+  não corta nem obriga a encolher. A placa toma a cor de fundo da marca
+  quando ela tem uma só — a borda do arquivo desaparece e o conjunto lê como
+  um emblema só.
 - **A contagem de "x de 11 em campo".** Quem olha a imagem conta os onze
   sozinho. O rodapé ficou só com a assinatura, e o lugar dela virou campo.
 

@@ -610,7 +610,7 @@ const TESTES = [
     };
   }],
 
-  ['o brasão leva a marca inteira, sem cortar as pontas', async () => {
+  ['a marca do clube vai inteira, na placa de pontas arredondadas', async () => {
     const mod = await import('../js/compartilhar.js');
     const { slotsDaTatica } = await import('../js/taticas.js');
 
@@ -630,19 +630,18 @@ const TESTES = [
     });
     const cor = await amostrar(arquivo);
     const ehMarca = ({ r, g, b }) => r > 180 && g < 90 && b > 140;
-    const ehFundo = ({ r, g, b }) => r < 40 && g < 45 && b < 55;
+    const ehFundo = ({ r, g, b }) => r < 45 && g < 45 && b < 60;
     const ehGrama = ({ r, g, b }) => g > r && g > b;
 
-    /* O brasão é uma placa de 144 em (24, 18), com a marca encaixada
-       dentro dela — de (47, 27) a (145, 125).                          */
+    /* A placa mede 144 em (24, 18), com a marca encaixada dentro dela —
+       de (34, 28) a (158, 152).                                        */
     const medido = {
-      marcaNoCantoDeCima: cor(52, 32),
-      marcaNoCantoDeBaixo: cor(140, 118),
+      marcaNoCantoDeCima: cor(40, 34),
+      marcaNoCantoDeBaixo: cor(150, 144),
       // a placa toma a cor do fundo da marca: a borda do arquivo some
-      placa: cor(30, 100),
-      // fora da silhueta do brasão é fundo da imagem — é isto que separa
-      // um brasão de um quadrado
-      foraDoBrasao: cor(28, 26),
+      placa: cor(28, 90),
+      // a ponta da placa é arredondada: ali fora já é fundo da imagem
+      pontaArredondada: cor(26, 20),
       // e o gramado não tem marca nenhuma
       cantoDoCampo: cor(70, 1500),
       meioDoCampo: cor(540, 860),
@@ -650,7 +649,7 @@ const TESTES = [
     return {
       ...medido,
       ok: ehMarca(medido.marcaNoCantoDeCima) && ehMarca(medido.marcaNoCantoDeBaixo)
-          && ehMarca(medido.placa) && ehFundo(medido.foraDoBrasao)
+          && ehMarca(medido.placa) && ehFundo(medido.pontaArredondada)
           && ehGrama(medido.cantoDoCampo) && ehGrama(medido.meioDoCampo),
     };
   }],
