@@ -610,12 +610,12 @@ const TESTES = [
     };
   }],
 
-  ['o escudo aparece inteiro no topo, sem recorte e sem manchar o campo', async () => {
+  ['o brasão leva a marca inteira, sem cortar as pontas', async () => {
     const mod = await import('../js/compartilhar.js');
     const { slotsDaTatica } = await import('../js/taticas.js');
 
-    // um escudo quadrado de cor única: se algum recorte comer as pontas,
-    // os cantos da caixa deixam de ser dessa cor
+    // uma marca quadrada de cor única: se algum recorte comer as pontas,
+    // os cantos dela deixam de ser dessa cor
     const cv = document.createElement('canvas');
     cv.width = cv.height = 120;
     const pincel = cv.getContext('2d');
@@ -629,21 +629,29 @@ const TESTES = [
       slots: slotsDaTatica('4-3-3', 'Clássico').map((s) => ({ x: s.x, y: s.y, pos: s.pos, jogador: null })),
     });
     const cor = await amostrar(arquivo);
-    const ehEscudo = ({ r, g, b }) => r > 180 && g < 90 && b > 140;
+    const ehMarca = ({ r, g, b }) => r > 180 && g < 90 && b > 140;
+    const ehFundo = ({ r, g, b }) => r < 40 && g < 45 && b < 55;
+    const ehGrama = ({ r, g, b }) => g > r && g > b;
 
-    // a caixa do escudo mora em (24, 36) e mede 112
+    /* O brasão é uma placa de 144 em (24, 18), com a marca encaixada
+       dentro dela — de (47, 27) a (145, 125).                          */
     const medido = {
-      cantoDeCima: cor(30, 42),
-      cantoDeBaixo: cor(130, 142),
-      // onde a marca já morou, no gramado, agora é só grama
+      marcaNoCantoDeCima: cor(52, 32),
+      marcaNoCantoDeBaixo: cor(140, 118),
+      // a placa toma a cor do fundo da marca: a borda do arquivo some
+      placa: cor(30, 100),
+      // fora da silhueta do brasão é fundo da imagem — é isto que separa
+      // um brasão de um quadrado
+      foraDoBrasao: cor(28, 26),
+      // e o gramado não tem marca nenhuma
       cantoDoCampo: cor(70, 1500),
       meioDoCampo: cor(540, 860),
     };
-    const grama = ({ r, g, b }) => g > r && g > b;
     return {
       ...medido,
-      ok: ehEscudo(medido.cantoDeCima) && ehEscudo(medido.cantoDeBaixo)
-          && grama(medido.cantoDoCampo) && grama(medido.meioDoCampo),
+      ok: ehMarca(medido.marcaNoCantoDeCima) && ehMarca(medido.marcaNoCantoDeBaixo)
+          && ehMarca(medido.placa) && ehFundo(medido.foraDoBrasao)
+          && ehGrama(medido.cantoDoCampo) && ehGrama(medido.meioDoCampo),
     };
   }],
 

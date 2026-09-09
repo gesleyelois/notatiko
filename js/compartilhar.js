@@ -124,6 +124,57 @@ function caminhoEscudo(ctx, x, y, t) {
   ctx.closePath();
 }
 
+/* A cor de fundo da marca, quando ela tem uma só.
+
+   Escudo enviado como JPEG não tem transparência: vem com um fundo
+   chapado, quase sempre branco ou creme. Se a placa do brasão tomar essa
+   cor, a borda do arquivo some e o que se vê é o brasão com a marca
+   dentro — em vez de um quadrado colado num escudo.
+
+   A conta olha a moldura de um pixel em volta da marca e procura a cor
+   que mais se repete ali. Olhar só os quatro cantos não serve: escudo com
+   faixa do ano de fundação embaixo tem os dois cantos de baixo na cor da
+   faixa, e o fundo seria descartado justamente nos escudos em que ele é
+   mais evidente. Fundo transparente, foto ou degradê não têm cor
+   dominante — aí a placa fica no metal escuro.                          */
+function fundoDaMarca(img) {
+  try {
+    const n = 64;
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = n;
+    const c = cv.getContext('2d', { willReadFrequently: true });
+    c.drawImage(img, 0, 0, n, n);
+    const d = c.getImageData(0, 0, n, n).data;
+
+    const moldura = [];
+    for (let i = 0; i < n; i++) {
+      for (const [x, y] of [[i, 0], [i, n - 1], [0, i], [n - 1, i]]) {
+        const p = (y * n + x) * 4;
+        moldura.push([d[p], d[p + 1], d[p + 2], d[p + 3]]);
+      }
+    }
+
+    // agrupa por cor aproximada e fica com o grupo mais numeroso
+    const grupos = new Map();
+    for (const [r, g, b, a] of moldura) {
+      if (a < 240) continue;
+      const chave = `${r >> 4}-${g >> 4}-${b >> 4}`;
+      const grupo = grupos.get(chave) || { n: 0, r: 0, g: 0, b: 0 };
+      grupo.n++; grupo.r += r; grupo.g += g; grupo.b += b;
+      grupos.set(chave, grupo);
+    }
+    const maior = [...grupos.values()].sort((a, b) => b.n - a.n)[0];
+    if (!maior || maior.n < moldura.length * .55) return null;
+
+    const r = Math.round(maior.r / maior.n);
+    const g = Math.round(maior.g / maior.n);
+    const b = Math.round(maior.b / maior.n);
+    return { css: `rgb(${r},${g},${b})`, claro: (r * .299 + g * .587 + b * .114) > 140 };
+  } catch {
+    return null;   // canvas sem permissão de leitura: segue no metal
+  }
+}
+
 // desenha a imagem inteira dentro da área, sem cortar (object-fit: contain)
 function conter(ctx, img, x, y, w, h) {
   const escala = Math.min(w / img.width, h / img.height);
@@ -629,36 +680,62 @@ export async function imagemDaEscalacao({ time, tatica, forca, sintonia, slots }
   ctx.fillStyle = fundo;
   ctx.fillRect(0, 0, L, A);
 
-  /* ---- topo: escudo, nome e tática ----
+  /* ---- topo: o brasão do clube ----
 
-     O escudo vai inteiro, encaixado numa caixa quadrada sem recorte
-     nenhum: o placar do app corta em forma de brasão porque ali ele é um
-     emblema de 34px, mas aqui é a marca do clube — e brasão redondo,
-     quadrado ou com faixa de texto embaixo tem que aparecer como foi
-     desenhado, não com as pontas comidas.                              */
-  const t = 112;
-  const topoEscudo = 36;
-  if (escudo) {
-    ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,.55)';
-    ctx.shadowBlur = 18;
-    ctx.shadowOffsetY = 5;
-    conter(ctx, escudo, MARGEM, topoEscudo, t, t);
-    ctx.restore();
+     O escudo é uma placa em forma de brasão — a mesma silhueta do emblema
+     do placar do app — com a marca do clube inteira dentro dela.
+
+     Recortar a marca NO formato do brasão foi a primeira tentativa e
+     estava errado: escudo redondo perde os lados, e faixa com o ano de
+     fundação embaixo é a primeira coisa a sumir. Aqui o brasão é moldura,
+     não tesoura: a marca é reduzida até caber no maior quadrado que cabe
+     dentro da silhueta, e nada é cortado.                               */
+  const t = 144;
+  const topoEscudo = 18;
+  const marca = escudo ? fundoDaMarca(escudo) : null;
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,.55)';
+  ctx.shadowBlur = 20;
+  ctx.shadowOffsetY = 6;
+  caminhoEscudo(ctx, MARGEM, topoEscudo, t);
+  if (marca) {
+    ctx.fillStyle = marca.css;
   } else {
-    // sem escudo, a silhueta de brasão segura o lugar
-    ctx.save();
-    caminhoEscudo(ctx, MARGEM + t * .1, topoEscudo, t * .8);
     const metal = ctx.createLinearGradient(MARGEM, topoEscudo, MARGEM + t, topoEscudo + t);
     metal.addColorStop(0, '#2a3542');
     metal.addColorStop(1, '#141a22');
     ctx.fillStyle = metal;
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,.14)';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    ctx.restore();
   }
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  caminhoEscudo(ctx, MARGEM, topoEscudo, t);
+  ctx.clip();
+  if (escudo) {
+    /* O maior quadrado que cabe no brasão: 0,68 do lado, com o topo em
+       6%. Crescer além disso põe a base da marca na parte em que a
+       silhueta afunila para o bico — e é ali que mora a faixa com o ano
+       de fundação, a primeira coisa a ser comida.                      */
+    const dentro = t * .68;
+    conter(ctx, escudo, MARGEM + (t - dentro) / 2, topoEscudo + t * .06, dentro, dentro);
+  } else {
+    // sem marca, a silhueta vazia segura o lugar
+    ctx.strokeStyle = 'rgba(255,255,255,.28)';
+    ctx.lineWidth = 4;
+    caminhoEscudo(ctx, MARGEM + t * .28, topoEscudo + t * .2, t * .44);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // o filete que fecha o brasão: escuro sobre placa clara, claro sobre escura
+  ctx.save();
+  caminhoEscudo(ctx, MARGEM, topoEscudo, t);
+  ctx.strokeStyle = marca?.claro ? 'rgba(0,0,0,.3)' : 'rgba(255,255,255,.18)';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.restore();
 
   const xTexto = MARGEM + t + 22;
   ctx.textAlign = 'left';
