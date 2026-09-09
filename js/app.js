@@ -1975,12 +1975,16 @@ async function excluirJogador(j) {
    folha de partilha do sistema, que é quem pergunta para onde vai —
    nada sobe para lugar nenhum.                                         */
 
-// Tudo que a imagem precisa, já resolvido: nota, tier e improviso saem
-// daqui prontos, para o desenho nunca discordar do que está na tela.
+/* O que a imagem precisa para desenhar as cartas.
+
+   Sai daqui pronto — nota, tier, improviso e as seis características —
+   para o desenho nunca discordar do que está na tela. E é a carta da
+   tela que manda: a nota e a posição são as do jogador (o que ele é),
+   não as da vaga (onde ele está). Quem diz a vaga é a pílula debaixo da
+   carta, âmbar quando as duas discordam.                                */
 function retratoDaEscalacao() {
   return slotsFormacao().map((slot) => {
     const j = jogadorNoSlot(slot.id);
-    const nota = j ? notaNaPosicao(j, slot.pos) : null;
     return {
       x: slot.x,
       y: slot.y,
@@ -1988,8 +1992,11 @@ function retratoDaEscalacao() {
       jogador: j && {
         apelido: j.apelido,
         foto: j.foto || '',
-        nota,
-        tier: tierDe(nota),
+        nota: notaDe(j),
+        tier: tierDe(notaDe(j)),
+        posicao: j.posicao,
+        alternativas: (j.posicoes || []).join(' '),
+        stats: atributosDe(j).map((a) => j[a.chave] ?? 50),
         fora: !atuaEm(j, slot.pos),
       },
     };

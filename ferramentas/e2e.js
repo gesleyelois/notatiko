@@ -61,6 +61,24 @@ function limparSelecaoTocandoFora() {
   g.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: r.left + 3, clientY: r.top + 3 }));
 }
 
+// lê os pixels de uma imagem gerada, para conferir o desenho no canvas
+async function amostrar(arquivo) {
+  const img = new Image();
+  img.src = URL.createObjectURL(arquivo);
+  await new Promise((r) => { img.onload = r; });
+  const cv = document.createElement('canvas');
+  cv.width = img.naturalWidth;
+  cv.height = img.naturalHeight;
+  const ctx = cv.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+  URL.revokeObjectURL(img.src);
+  const dados = ctx.getImageData(0, 0, cv.width, cv.height).data;
+  return (x, y) => {
+    const i = (y * cv.width + x) * 4;
+    return { r: dados[i], g: dados[i + 1], b: dados[i + 2] };
+  };
+}
+
 // puxa a ficha para baixo pela alça
 function puxarFichaParaBaixo(px) {
   const alca = $('#folha-alca');
@@ -592,16 +610,17 @@ const TESTES = [
     };
   }],
 
-  ['o escudo aparece no canto do campo, e não apagado no meio', async () => {
+  ['o escudo aparece inteiro no topo, sem recorte e sem manchar o campo', async () => {
     const mod = await import('../js/compartilhar.js');
     const { slotsDaTatica } = await import('../js/taticas.js');
 
-    // um escudo de cor única, para poder ser procurado pixel a pixel
+    // um escudo quadrado de cor única: se algum recorte comer as pontas,
+    // os cantos da caixa deixam de ser dessa cor
     const cv = document.createElement('canvas');
     cv.width = cv.height = 120;
-    const c2 = cv.getContext('2d');
-    c2.fillStyle = '#ff00d4';
-    c2.fillRect(0, 0, 120, 120);
+    const pincel = cv.getContext('2d');
+    pincel.fillStyle = '#ff00d4';
+    pincel.fillRect(0, 0, 120, 120);
 
     const arquivo = await mod.imagemDaEscalacao({
       time: { nome: 'TESTE', escudo: cv.toDataURL('image/png') },
@@ -609,35 +628,56 @@ const TESTES = [
       forca: 70, sintonia: 80,
       slots: slotsDaTatica('4-3-3', 'Clássico').map((s) => ({ x: s.x, y: s.y, pos: s.pos, jogador: null })),
     });
+    const cor = await amostrar(arquivo);
+    const ehEscudo = ({ r, g, b }) => r > 180 && g < 90 && b > 140;
 
-    const img = new Image();
-    img.src = URL.createObjectURL(arquivo);
-    await new Promise((r) => { img.onload = r; });
-    const leitura = document.createElement('canvas');
-    leitura.width = img.naturalWidth;
-    leitura.height = img.naturalHeight;
-    leitura.getContext('2d').drawImage(img, 0, 0);
-    URL.revokeObjectURL(img.src);
-
-    const cor = (x, y) => {
-      const [r, g, b] = leitura.getContext('2d').getImageData(x, y, 1, 1).data;
-      return { r, g, b };
-    };
-    const ehMagenta = ({ r, g, b }) => r > 180 && g < 90 && b > 140;
-
-    // o campo começa em 200 e mede 1000x1333: o canto de baixo à esquerda
-    // fica por volta de (110, 1430); o meio, em (540, 866)
-    const canto = cor(110, 1430);
-    const meio = cor(540, 866);
+    // a caixa do escudo mora em (24, 36) e mede 112
     const medido = {
-      canto, meio,
-      // o gramado do meio continua gramado
-      meioEhGrama: meio.g > meio.r && meio.g > meio.b,
+      cantoDeCima: cor(30, 42),
+      cantoDeBaixo: cor(130, 142),
+      // onde a marca já morou, no gramado, agora é só grama
+      cantoDoCampo: cor(70, 1500),
+      meioDoCampo: cor(540, 860),
     };
+    const grama = ({ r, g, b }) => g > r && g > b;
     return {
       ...medido,
-      ok: ehMagenta(canto) && medido.meioEhGrama && !ehMagenta(meio),
+      ok: ehEscudo(medido.cantoDeCima) && ehEscudo(medido.cantoDeBaixo)
+          && grama(medido.cantoDoCampo) && grama(medido.meioDoCampo),
     };
+  }],
+
+  ['os onze vão como carta, não como bolinha', async () => {
+    const mod = await import('../js/compartilhar.js');
+    const { slotsDaTatica } = await import('../js/taticas.js');
+
+    const slots = slotsDaTatica('4-3-3', 'Clássico').map((s) => ({
+      x: s.x, y: s.y, pos: s.pos,
+      jogador: s.pos === 'ATA' ? {
+        apelido: 'CRAQUE', foto: '', nota: 78, tier: 'ouro', posicao: 'ATA',
+        alternativas: '', stats: [80, 78, 70, 76, 40, 72], fora: false,
+      } : null,
+    }));
+    const arquivo = await mod.imagemDaEscalacao({
+      time: { nome: 'TESTE', escudo: '' },
+      tatica: { formacao: '4-3-3', variacao: 'Clássico' },
+      forca: 78, sintonia: 100, slots,
+    });
+
+    const cor = await amostrar(arquivo);
+    // a liga do ouro vai do creme ao dourado escuro: quente, e nunca verde
+    let metal = 0;
+    for (let x = 0; x < 1080; x += 2) {
+      for (let y = 200; y < 1560; y += 2) {
+        const { r, g, b } = cor(x, y);
+        if (r > 150 && r > b + 40 && g > b) metal++;
+      }
+    }
+    metal *= 4;   // a varredura foi de dois em dois, nos dois eixos
+
+    // a bolinha de antes tinha 52 de raio: 8.500 pixels no total. A carta
+    // mede 7,4 por 10,36 ems — mais de trinta mil.
+    return { pixelsDeMetal: metal, bolinhaTeria: Math.round(Math.PI * 52 * 52), ok: metal > 20000 };
   }],
 
   ['funciona offline: tudo que o app precisa está no cache', async () => {
