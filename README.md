@@ -18,6 +18,8 @@ do navegador.
 - **19 táticas** — 10 formações com variações (4-4-2 Losango, 4-3-3 Falso 9, 3-5-2 Alas ofensivos…), escolhidas pelo desenho do time.
 - **Força e Sintonia** — duas medalhas no placar, com o arco contando o valor.
   Toque para ver de onde cada número saiu.
+- **Compartilhar** — o time inteiro num arquivo, para quem tem o app; só a
+  escalação numa imagem, para qualquer um.
 
 ## Como as notas funcionam
 
@@ -43,6 +45,44 @@ goleiro não é alternativa de ninguém, nem ninguém é alternativa de goleiro.
 - **Sintonia** — o quanto o time joga onde sabe. Posição principal vale 100%,
   uma segunda função 85%, mesmo setor 60%, setor vizinho 25%.
 
+## Compartilhando
+
+Não há servidor, conta nem link: o app monta o que vai ser compartilhado e
+entrega à folha de partilha do sistema — o mesmo caminho de uma foto. Quem
+escolhe o destino é você, e nada sai por conta própria. Onde não existe folha
+de partilha (a maioria dos navegadores de computador), o arquivo é baixado.
+
+São dois presentes para dois destinatários diferentes:
+
+- **O time inteiro** vira um arquivo `.notatiko.json` com escudo, elenco,
+  comissão, tática e escalação. Só quem tem o NoTatiko abre — e abre com o
+  time igual, fotos e notas inclusive.
+- **Só a escalação** vira uma imagem 1080×1620 com o gramado, os onze nas
+  posições, as notas, a tática e as duas medalhas. Serve para qualquer um: o
+  grupo do WhatsApp não precisa instalar nada. O campo é desenhado num
+  `canvas`, não fotografado da tela — assim sai do mesmo tamanho em qualquer
+  aparelho, sem HUD, sem elenco e sem a barra do sistema no meio.
+
+### Recebendo um time
+
+O arquivo abre pela mesma ficha, em *Receber*. Antes de mexer em qualquer
+coisa, o app mostra o que veio e pergunta o que fazer:
+
+- **Só trazer os jogadores** — eles entram no seu elenco como reforço, com
+  identificadores novos. Seu clube, sua comissão e sua escalação ficam como
+  estavam.
+- **Substituir** — o aparelho passa a ter o time recebido, e só ele. Como é
+  destrutivo, confirma-se deslizando.
+
+Arquivo de outra pessoa é dado de fora, e é tratado como tal: nada dele é
+aproveitado inteiro. Cada campo é copiado para um objeto novo, os textos são
+cortados no limite, as notas ficam entre 1 e 99, posição e função têm que
+existir no jogo, a vaga tem que existir naquela tática, e foto e escudo só
+passam se forem `data:` de imagem — a foto é escrita no `src` de uma `<img>`,
+então uma string qualquer ali seria HTML dentro da carta. A fronteira do gol
+também vale para o que chega: goleiro não entra como segunda função de
+ninguém.
+
 ## Rodando localmente
 
 ```bash
@@ -62,6 +102,7 @@ Sem framework, sem build, sem dependências: HTML, CSS e JavaScript com módulos
 | `js/app.js` | Estado, renderização, arrastar e soltar, animações |
 | `js/taticas.js` | As 19 táticas e suas coordenadas em campo |
 | `js/db.js` | Persistência em IndexedDB |
+| `js/compartilhar.js` | Arquivo do time, imagem da escalação e leitura do que chega |
 | `js/audio.js` | Trilha sonora, efeitos das ações e narração |
 | `audio/trilha.mp3` | O loop da trilha, renderizado da própria síntese |
 | `js/falas.js` | As 42 frases da narração |
@@ -69,7 +110,9 @@ Sem framework, sem build, sem dependências: HTML, CSS e JavaScript com módulos
 | `sw.js` | Service Worker — cache para funcionar offline |
 
 Os dados ficam no próprio aparelho (IndexedDB). Nada é enviado para servidor
-nenhum: sem contas, sem back-end, sem rastreio.
+nenhum: sem contas, sem back-end, sem rastreio. Compartilhar também não muda
+isso — o arquivo e a imagem são montados no aparelho e entregues à folha de
+partilha do sistema, que é quem pergunta para onde vão.
 
 ## Som
 
@@ -184,8 +227,10 @@ Com o app aberto, no console do navegador:
 const t = await import('./ferramentas/e2e.js'); await t.rodar();
 ```
 
-São 14 testes ponta a ponta contra o DOM e o IndexedDB de verdade: fundar o
+São 30 testes ponta a ponta contra o DOM e o IndexedDB de verdade: fundar o
 clube, criar jogador pela carta, moldar o radar, escalar, trocar de tática,
 sobreviver a uma recarga, o campo ocupar a tela, não sobrar comportamento de
-página web e o cache offline estar completo. Dois deles recarregam a página —
+página web, o time ir e voltar de um arquivo sem perder nada, a escalação
+virar imagem, um arquivo de fora não conseguir entrar com HTML nem com nota
+inventada e o cache offline estar completo. Dois deles recarregam a página —
 depois da recarga, continue com `await t.continuar()`.

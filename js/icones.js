@@ -19,4 +19,6 @@ export const ic = {
   pausa: svg('<path d="M8 4v16M16 4v16" stroke-width="3.2"/>'),
   saida: svg('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/>'),
   campo: svg('<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M12 4v16"/><circle cx="12" cy="12" r="3"/>'),
+  partilha: svg('<path d="M12 15V3"/><path d="m8 7 4-4 4 4"/><path d="M20 13v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6"/>'),
+  receber: svg('<path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M20 13v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6"/>'),
 };

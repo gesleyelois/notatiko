@@ -9,6 +9,8 @@
    só "falhou". O banco é esvaziado no começo e no fim.
 */
 
+import { TATICAS, slotsDaTatica } from '../js/taticas.js';
+
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
@@ -101,6 +103,16 @@ async function limparBanco() {
   });
   db.close();
 }
+
+// O vocabulário do jogo, do jeito que o app entrega ao módulo de partilha.
+const REGRAS = {
+  posicoes: ['GOL', 'ZAG', 'LE', 'LD', 'VOL', 'MC', 'MEI', 'PE', 'PD', 'ATA'],
+  atributos: ['rit', 'fin', 'pas', 'dri', 'def', 'fis', 'ela', 'man', 'ref', 'pos', 'rep', 'vel'],
+  funcoes: ['Técnico', 'Auxiliar técnico', 'Massagista'],
+  podeAtuarEm: (principal, sigla) => sigla !== principal && (principal === 'GOL') === (sigla === 'GOL'),
+  vagas: (formacao, variacao) =>
+    (TATICAS[formacao] ? slotsDaTatica(formacao, variacao).map((s) => s.id) : []),
+};
 
 const TESTES = [
 
@@ -569,13 +581,183 @@ const TESTES = [
     };
   }],
 
+  ['o time inteiro vira arquivo, e o arquivo volta igual', async () => {
+    const mod = await import('../js/compartilhar.js');
+    const { DB } = await import('../js/db.js');
+    const antes = {
+      time: await DB.obterTime(),
+      jogadores: await DB.listarJogadores(),
+      comissao: await DB.listarComissao(),
+      escalacao: await DB.obterEscalacao(),
+    };
+
+    const arquivo = mod.arquivoDoPacote(mod.montarPacote(antes));
+    const volta = mod.lerPacote(await arquivo.text(), REGRAS);
+
+    return {
+      nomeDoArquivo: arquivo.name,
+      tipo: arquivo.type,
+      kb: Math.round(arquivo.size / 1024),
+      jogadores: [antes.jogadores.length, volta.jogadores.length],
+      comissao: [antes.comissao.length, volta.comissao.length],
+      escalados: [
+        Object.values(antes.escalacao.slots).filter(Boolean).length,
+        Object.keys(volta.escalacao.slots).length,
+      ],
+      clube: [antes.time.nome, volta.time.nome],
+      ok: arquivo.name.endsWith('.notatiko.json')
+          && volta.time.nome === antes.time.nome
+          && volta.jogadores.length === antes.jogadores.length
+          && volta.comissao.length === antes.comissao.length
+          && volta.escalacao.formacao === antes.escalacao.formacao
+          && volta.escalacao.variacao === antes.escalacao.variacao,
+    };
+  }],
+
+  ['a escalação vira imagem, do tamanho de um story', async () => {
+    toque($('#btn-compartilhar'));
+    await ate(() => $('#previa-partilha img'), { oque: 'a prévia da escalação', limite: 20000 });
+    const img = $('#previa-partilha img');
+    await ate(() => img.naturalWidth > 0, { oque: 'a imagem carregar' });
+
+    const medido = {
+      largura: img.naturalWidth,
+      altura: img.naturalHeight,
+      // as duas saídas, e a de receber
+      saidas: [!!$('#enviar-time'), !!$('#enviar-escalacao'), !!$('#receber-time')],
+      // a imagem tem que poder ser salva segurando o dedo: é o caminho de
+      // quem não usa a folha de partilha
+      menuDoSistema: getComputedStyle(img).webkitTouchCallout,
+    };
+    return {
+      ...medido,
+      ok: medido.largura === 1080 && medido.altura === 1620
+          && medido.saidas.every(Boolean) && medido.menuDoSistema !== 'none',
+    };
+  }],
+
+  ['o time que chegou não mexe em nada antes da confirmação', async () => {
+    const elencoAntes = $$('#trilho .item-trilho').length;
+    const clubeAntes = $('#topo-nome').textContent;
+    const emCampoAntes = $('#topo-sub').textContent;
+
+    const pacote = {
+      formato: 'notatiko-time', versao: 1,
+      time: { nome: 'VISITANTE F.C', escudo: '' },
+      jogadores: [
+        { id: 'v1', apelido: 'VISITA', posicao: 'ATA', posicoes: [], foto: '',
+          rit: 80, fin: 88, pas: 60, dri: 70, def: 30, fis: 65 },
+      ],
+      comissao: [],
+      escalacao: { formacao: '4-4-2', variacao: 'Clássico', slots: { ata1: 'v1' } },
+    };
+    const dt = new DataTransfer();
+    dt.items.add(new File([JSON.stringify(pacote)], 'visita.notatiko.json', { type: 'application/json' }));
+    const entrada = $('#in-time-arquivo');
+    entrada.files = dt.files;
+    entrada.dispatchEvent(new Event('change', { bubbles: true }));
+
+    await ate(() => $('#folha-titulo').textContent === 'Time recebido', { oque: 'a ficha do time recebido' });
+    const mostra = {
+      nome: $('.cena-time .entrada-titulo').textContent,
+      resumo: $('.cena-time .ajuda').textContent,
+      ofereceJuntar: !!$('#juntar-elenco'),
+      ofereceSubstituir: !!$('#adotar-time'),
+    };
+
+    // sai sem escolher nada: o aparelho não pode ter mudado
+    toque($('#folha-fechar'));
+    await espera(500);
+
+    return {
+      ...mostra,
+      elenco: [elencoAntes, $$('#trilho .item-trilho').length],
+      clube: [clubeAntes, $('#topo-nome').textContent],
+      ok: mostra.nome === 'VISITANTE F.C' && mostra.ofereceJuntar && mostra.ofereceSubstituir
+          && $$('#trilho .item-trilho').length === elencoAntes
+          && $('#topo-nome').textContent === clubeAntes
+          && $('#topo-sub').textContent === emCampoAntes,
+    };
+  }],
+
+  ['arquivo de fora não entra com HTML, nem com nota inventada', async () => {
+    const mod = await import('../js/compartilhar.js');
+    // a foto é escrita direto no src de uma <img>: aspas e evento no meio
+    // dela seriam HTML dentro da carta
+    const veneno = JSON.stringify({
+      formato: 'notatiko-time', versao: 1,
+      time: { nome: 'X'.repeat(80), escudo: '" onerror="alert(1)' },
+      jogadores: [
+        { id: 'a', apelido: 'ATACANTE', posicao: 'ATA', posicoes: ['ATA', 'GOL'],
+          foto: 'javascript:alert(1)', fin: 5000, def: -30 },
+        { id: 'b', apelido: 'INVENTADO', posicao: 'CENTROAVANTE', foto: '' },
+      ],
+      comissao: [{ id: 'c', nome: 'C', funcao: 'Presidente da República', foto: 'http://exemplo/foto.png' }],
+      escalacao: { formacao: '4-3-3', variacao: 'Clássico', slots: { ata: 'a', gol: 'b', xxx: 'a' } },
+    });
+    const lido = mod.lerPacote(veneno, REGRAS);
+    const naoEhNotatiko = (() => {
+      try { mod.lerPacote('{"formato":"outra-coisa"}', REGRAS); return false; } catch { return true; }
+    })();
+
+    const medido = {
+      escudo: lido.time.escudo,
+      foto: lido.jogadores[0]?.foto,
+      nomeCortado: lido.time.nome.length,
+      notaMaxima: lido.jogadores[0]?.fin,
+      notaMinima: lido.jogadores[0]?.def,
+      posicaoInventadaFora: lido.jogadores.length === 1,
+      alternativaRepetidaFora: lido.jogadores[0]?.posicoes,
+      funcaoInventadaTrocada: lido.comissao[0]?.funcao,
+      fotoDeFora: lido.comissao[0]?.foto,
+      // a vaga do jogador recusado e a vaga inventada não sobrevivem
+      slots: Object.keys(lido.escalacao.slots),
+      naoEhNotatiko,
+    };
+    return {
+      ...medido,
+      ok: medido.escudo === '' && medido.foto === '' && medido.fotoDeFora === ''
+          && medido.nomeCortado === 26 && medido.notaMaxima === 99 && medido.notaMinima === 1
+          && medido.posicaoInventadaFora && medido.alternativaRepetidaFora.length === 0
+          && medido.funcaoInventadaTrocada === 'Técnico'
+          && medido.slots.length === 1 && medido.slots[0] === 'ata'
+          && naoEhNotatiko,
+    };
+  }],
+
+  ['a fronteira do gol não se atravessa nem por arquivo', async () => {
+    // no app, goleiro não é segunda função de ninguém — e um arquivo de
+    // fora não pode ser o caminho para escrever o que a ficha não deixa
+    const mod = await import('../js/compartilhar.js');
+    const pacote = JSON.stringify({
+      formato: 'notatiko-time', versao: 1,
+      time: { nome: 'FRONTEIRA', escudo: '' },
+      jogadores: [
+        { id: 'a', apelido: 'ATACANTE', posicao: 'ATA', posicoes: ['GOL', 'PE'], foto: '' },
+        { id: 'g', apelido: 'GOLEIRO', posicao: 'GOL', posicoes: ['ZAG'], foto: '' },
+      ],
+      comissao: [],
+      escalacao: { formacao: '4-3-3', variacao: 'Clássico', slots: {} },
+    });
+    const lido = mod.lerPacote(pacote, REGRAS);
+    const medido = {
+      alternativasDoAtacante: lido.jogadores[0].posicoes,
+      alternativasDoGoleiro: lido.jogadores[1].posicoes,
+    };
+    return {
+      ...medido,
+      ok: medido.alternativasDoAtacante.join() === 'PE'
+          && medido.alternativasDoGoleiro.length === 0,
+    };
+  }],
+
   ['funciona offline: tudo que o app precisa está no cache', async () => {
     const nomes = await caches.keys();
     if (!nomes.length) return { cache: 'nenhum', ok: false, nota: 'o Service Worker ainda não instalou' };
     const c = await caches.open(nomes[0]);
     const urls = (await c.keys()).map((k) => new URL(k.url).pathname);
     const precisa = ['/index.html', '/css/style.css', '/js/app.js', '/js/audio.js',
-      '/js/falas.js', '/audio/trilha.mp3', '/audio/efeitos/guardar.mp3'];
+      '/js/compartilhar.js', '/js/falas.js', '/audio/trilha.mp3', '/audio/efeitos/guardar.mp3'];
     const faltando = precisa.filter((p) => !urls.some((u) => u.endsWith(p)));
     return {
       cache: nomes[0], itens: urls.length,
