@@ -2,9 +2,7 @@ import { DB } from './db.js';
 import { efeitos, trilha, narrador } from './audio.js';
 import { ic } from './icones.js';
 import { TATICAS, TATICA_PADRAO, slotsDaTatica } from './taticas.js';
-import {
-  montarPacote, lerPacote, lerArquivo, arquivoDoPacote, entregar, imagemDaEscalacao,
-} from './compartilhar.js';
+import { entregar, imagemDaEscalacao } from './compartilhar.js';
 
 /* =========================================================
    Domínio
@@ -845,9 +843,9 @@ function ligarInclinacao(seletor) {
    se confirma sem querer) e devolve uma sensação física ao ato de fechar
    contrato. O teclado confirma com Enter, para quem não arrasta.          */
 
-function deslizarHTML(id, texto, classe = '') {
+function deslizarHTML(id, texto) {
   return `
-    <div class="deslizar ${classe}" id="${id}" role="button" tabindex="0" aria-label="${texto}">
+    <div class="deslizar" id="${id}" role="button" tabindex="0" aria-label="${texto}">
       <span class="deslizar-rastro" aria-hidden="true"><i></i><i></i><i></i></span>
       <span class="deslizar-texto">${texto}</span>
       <span class="deslizar-punho">${ic.seta}</span>
@@ -1969,15 +1967,13 @@ async function excluirJogador(j) {
 }
 
 /* =========================================================
-   Compartilhar — o time num arquivo, a escalação numa imagem
+   Compartilhar — a escalação vira imagem
 
-   São dois destinatários diferentes. Quem tem o NoTatiko quer o time de
-   volta inteiro, com elenco, comissão e escudo: isso é um arquivo. Quem
-   está no grupo do WhatsApp quer ver quem joga domingo: isso é uma
-   imagem, que abre em qualquer aparelho sem instalar nada.
-
-   Nada disso sobe para lugar nenhum: o app monta o arquivo e entrega para
-   a folha de partilha do sistema, que é quem pergunta para onde vai.     */
+   Não há servidor nem conta, então o que se manda para alguém é uma
+   imagem: ela abre em qualquer aparelho, no grupo do WhatsApp, sem o
+   outro lado precisar ter o app. O NoTatiko desenha e entrega para a
+   folha de partilha do sistema, que é quem pergunta para onde vai —
+   nada sobe para lugar nenhum.                                         */
 
 // Tudo que a imagem precisa, já resolvido: nota, tier e improviso saem
 // daqui prontos, para o desenho nunca discordar do que está na tela.
@@ -2002,7 +1998,7 @@ function retratoDaEscalacao() {
 
 const nomeDoClube = () => estado.time?.nome || 'Meu Time';
 
-/* A imagem é gerada quando a folha abre, não quando o botão é tocado.
+/* A imagem é desenhada quando a folha abre, não quando o botão é tocado.
 
    No iOS a folha de partilha só abre no embalo do toque, e desenhar o
    campo leva alguns quadros: gerar ali gastava o gesto no caminho e o
@@ -2021,19 +2017,6 @@ async function prepararImagem() {
   return escalacaoEmImagem;
 }
 
-function opcaoHTML(id, icone, titulo, resumo, detalhe) {
-  return `
-    <button class="opcao-partilha" id="${id}">
-      <span class="opcao-icone">${icone}</span>
-      <span class="opcao-txt">
-        <b>${titulo}</b>
-        <small>${resumo}</small>
-        <i>${detalhe}</i>
-      </span>
-      <span class="opcao-seta">${ic.seta}</span>
-    </button>`;
-}
-
 function folhaCompartilhar() {
   const escalados = idsEscalados().size;
   const total = slotsFormacao().length;
@@ -2044,28 +2027,23 @@ function folhaCompartilhar() {
   abrirFolha({
     titulo: 'Compartilhar',
     corpo: `
-      ${opcaoHTML('enviar-time', ic.escudo, 'O time inteiro',
-        'Escudo, elenco, comissão e escalação num arquivo. Quem recebe abre no NoTatiko e o time nasce igual.',
-        `${estado.jogadores.length} ${estado.jogadores.length === 1 ? 'jogador' : 'jogadores'} · ${estado.comissao.length} na comissão`)}
-
-      ${opcaoHTML('enviar-escalacao', ic.campo, 'Só a escalação',
-        'Uma imagem dos onze em campo, com a tática e as notas. Serve para qualquer um, mesmo sem o app.',
-        `${formacao} ${variacao} · ${escalados} de ${total}`)}
-
       <div class="previa-partilha" id="previa-partilha">
         <div class="previa-vazia">Desenhando o campo…</div>
       </div>
 
-      <div class="titulo-bloco">Receber</div>
-      <input type="file" id="in-time-arquivo" class="oculto-de-verdade"
-             accept="application/json,.json,.notatiko">
-      ${opcaoHTML('receber-time', ic.receber, 'Abrir um time recebido',
-        'Escolha o arquivo que mandaram. O app mostra o que veio e pergunta o que fazer antes de mexer no seu.',
-        'Arquivo .notatiko.json')}
+      <button class="opcao-partilha" id="enviar-escalacao">
+        <span class="opcao-icone">${ic.partilha}</span>
+        <span class="opcao-txt">
+          <b>Mandar a escalação</b>
+          <small>Vai como imagem, então serve para qualquer um — não precisa ter o app.</small>
+          <i>${formacao} ${variacao} · ${escalados} de ${total}</i>
+        </span>
+        <span class="opcao-seta">${ic.seta}</span>
+      </button>
 
       <p class="ajuda" style="margin-top:16px">
-        Nada é enviado por conta própria: o app monta o arquivo ou a imagem e
-        entrega para você escolher o destino.
+        Nada é enviado por conta própria: o app desenha a imagem e entrega
+        para você escolher o destino.
       </p>
       <div style="height:10px"></div>`,
     aoMontar: () => {
@@ -2082,22 +2060,6 @@ function folhaCompartilhar() {
         previa.innerHTML = '<div class="previa-vazia">Não deu para desenhar a escalação.</div>';
       });
 
-      $('#enviar-time').onclick = async () => {
-        efeitos.tocar('toque');
-        const pacote = montarPacote({
-          time: estado.time || { nome: nomeDoClube(), escudo: '' },
-          jogadores: estado.jogadores,
-          comissao: estado.comissao,
-          escalacao: estado.escalacao,
-        });
-        const fim = await entregar(arquivoDoPacote(pacote), {
-          titulo: nomeDoClube(),
-          texto: `${nomeDoClube()} no NoTatiko — abra este arquivo no app para receber o time.`,
-        });
-        if (fim === 'baixado') toast('Arquivo do time salvo no aparelho');
-        if (fim === 'compartilhado') toast('Time enviado');
-      };
-
       $('#enviar-escalacao').onclick = async () => {
         efeitos.tocar('toque');
         const arquivo = escalacaoEmImagem || await prepararImagem();
@@ -2108,142 +2070,10 @@ function folhaCompartilhar() {
         if (fim === 'baixado') toast('Imagem salva no aparelho');
         if (fim === 'compartilhado') toast('Escalação enviada');
       };
-
-      $('#receber-time').onclick = () => $('#in-time-arquivo').click();
-      $('#in-time-arquivo').addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        e.target.value = '';                     // o mesmo arquivo pode ser aberto de novo
-        if (!file) return;
-        try {
-          const pacote = lerPacote(await lerArquivo(file), REGRAS_DO_PACOTE);
-          if (!pacote.jogadores.length && !pacote.time.nome) throw new Error('Este time veio vazio.');
-          folhaReceber(pacote);
-        } catch (erro) {
-          efeitos.tocar('excluir');
-          toast(erro.message || 'Não deu para abrir este arquivo');
-        }
-      });
     },
   });
 }
 
-/* O vocabulário que o arquivo de fora tem que respeitar. Quem valida o
-   conteúdo é o módulo de partilha; quem sabe o que existe no jogo é
-   daqui.                                                                */
-const REGRAS_DO_PACOTE = {
-  posicoes: POSICOES.map((p) => p.sigla),
-  atributos: [...ATRIBUTOS_LINHA, ...ATRIBUTOS_GOL].map((a) => a.chave),
-  funcoes: FUNCOES,
-  podeAtuarEm: (principal, sigla) => alternativaValida({ posicao: principal }, sigla),
-  vagas: (formacao, variacao) =>
-    (TATICAS[formacao] ? slotsDaTatica(formacao, variacao).map((s) => s.id) : []),
-};
-
-/* ---------- o time que chegou ---------- */
-
-function folhaReceber(pacote) {
-  const { time, jogadores, comissao, escalacao } = pacote;
-  const vazio = !estado.time && !estado.jogadores.length;
-
-  const resumo = [
-    `${jogadores.length} ${jogadores.length === 1 ? 'jogador' : 'jogadores'}`,
-    comissao.length ? `${comissao.length} na comissão` : '',
-    escalacao.formacao ? `${escalacao.formacao} ${escalacao.variacao}` : '',
-  ].filter(Boolean).join(' · ');
-
-  abrirFolha({
-    titulo: 'Time recebido',
-    corpo: `
-      <div class="cena-time">
-        <div class="escudo-grande estatico ${time.escudo ? 'tem-img' : ''}">
-          ${time.escudo ? `<img src="${time.escudo}" alt="">` : ic.escudo}
-        </div>
-        <div class="entrada-titulo estatico">${escapar(time.nome)}</div>
-        <p class="ajuda">${escapar(resumo)}</p>
-      </div>
-
-      ${vazio ? `
-        <div class="dica-bloco">Seu aparelho ainda não tem time. Deslize abaixo e este vira o seu.</div>`
-      : `
-        <div class="titulo-bloco">O que fazer com ele</div>
-        ${!jogadores.length ? '' : `
-        <button class="opcao-partilha" id="juntar-elenco">
-          <span class="opcao-icone">${ic.pessoa}</span>
-          <span class="opcao-txt">
-            <b>Só trazer os jogadores</b>
-            <small>${jogadores.length === 1 ? 'O jogador entra' : `Os ${jogadores.length} entram`} no seu elenco como reforço. Seu clube, sua comissão e sua escalação ficam como estão.</small>
-          </span>
-          <span class="opcao-seta">${ic.seta}</span>
-        </button>`}
-        <div class="dica-bloco perigo">
-          <b>Substituir</b> apaga o que está neste aparelho — clube, elenco,
-          comissão e escalação — e põe o time recebido no lugar. Não dá para desfazer.
-        </div>`}
-      <div style="height:10px"></div>`,
-    rodape: deslizarHTML('adotar-time',
-      vazio ? 'Receber o time' : 'Substituir meu time', vazio ? '' : 'perigo'),
-    aoMontar: () => {
-      ligarDeslizar('#adotar-time', async () => {
-        await adotarPacote(pacote);
-        fecharFolha();
-        efeitos.tocar('guardar');
-        toast(`${time.nome} chegou`);
-      });
-
-      $('#juntar-elenco')?.addEventListener('click', async () => {
-        const novos = await juntarAoElenco(jogadores);
-        fecharFolha();
-        efeitos.tocar('guardar');
-        toast(novos === 1 ? '1 jogador entrou no elenco' : `${novos} jogadores entraram no elenco`);
-      });
-    },
-  });
-}
-
-// Substituir: o aparelho passa a ter o time que chegou, e só ele.
-async function adotarPacote(pacote) {
-  for (const j of estado.jogadores) await DB.removerJogador(j.id);
-  for (const m of estado.comissao) await DB.removerMembro(m.id);
-
-  // ids repetidos (ou ausentes) ganham um novo, e a escalação segue o mapa
-  const mapa = new Map();
-  const jogadores = pacote.jogadores.map((j) => {
-    const id = j.id && !mapa.has(j.id) ? j.id : uid();
-    if (j.id) mapa.set(j.id, id);
-    return { ...j, id };
-  });
-  const comissao = pacote.comissao.map((m) => ({ ...m, id: m.id || uid() }));
-
-  const slots = {};
-  for (const [slotId, id] of Object.entries(pacote.escalacao.slots)) {
-    const novo = mapa.get(id);
-    if (novo) slots[slotId] = novo;
-  }
-
-  estado.time = { nome: pacote.time.nome, escudo: pacote.time.escudo };
-  estado.jogadores = jogadores;
-  estado.comissao = comissao;
-  estado.escalacao = normalizarEscalacao({ ...pacote.escalacao, slots }, jogadores);
-
-  await DB.salvarTime(estado.time);
-  for (const j of jogadores) await DB.salvarJogador(j);
-  for (const m of comissao) await DB.salvarMembro(m);
-  await DB.salvarEscalacao(estado.escalacao);
-
-  abrirAba('elenco', { som: false });
-  renderTudo();
-}
-
-// Juntar: só os jogadores, com id novo — nada colide com quem já está aqui.
-async function juntarAoElenco(jogadores) {
-  const novos = jogadores.map((j) => ({ ...j, id: uid() }));
-  for (const j of novos) await DB.salvarJogador(j);
-  estado.jogadores = [...estado.jogadores, ...novos];
-  abrirAba('elenco', { som: false });
-  renderElenco();
-  renderTopo();
-  return novos.length;
-}
 
 /* =========================================================
    Confirmação

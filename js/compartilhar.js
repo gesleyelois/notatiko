@@ -1,152 +1,18 @@
-/* Compartilhar — o time num arquivo, a escalação numa imagem.
+/* Compartilhar — a escalação vira imagem.
 
    O aplicativo não tem servidor nem conta: nada sai do aparelho por conta
-   própria. Compartilhar, aqui, é gerar algo e entregar à folha de partilha
-   do sistema — o mesmo caminho de uma foto.
+   própria. Compartilhar, aqui, é desenhar a escalação e entregar à folha de
+   partilha do sistema — o mesmo caminho de uma foto.
 
-   São dois presentes diferentes, para dois destinatários diferentes:
-
-   - o **time inteiro** vira arquivo (`.notatiko.json`), que só quem tem o app
-     abre — e abre com escudo, elenco, comissão, tática e escalação iguais;
-   - a **escalação** vira imagem, que qualquer um vê: o grupo do WhatsApp,
-     quem não instalou nada, quem só quer saber quem joga domingo.
-
-   Por isso o arquivo carrega tudo e a imagem carrega os onze.             */
-
-export const FORMATO = 'notatiko-time';
-export const VERSAO = 1;
-
-/* =========================================================
-   O pacote — o time inteiro em texto
-   ========================================================= */
-
-// data: URL de imagem e nada mais. O arquivo vem de outra pessoa, e a foto
-// é escrita direto no src de uma <img>: sem esta trava, um "arquivo de
-// time" poderia trazer atributo de HTML no meio da string, ou um endereço
-// que buscasse algo de fora quando a carta fosse desenhada.
-const IMAGEM_OK = /^data:image\/(?:png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/=]{16,}$/;
-
-const LIMITE_ARQUIVO = 16 * 1024 * 1024;   // 16 MB de fotos já é um elenco enorme
-// Tetos de quem CHEGA, não de quem sai: o que é seu vai inteiro, e um
-// arquivo de fora não pode encher o banco com dez mil cartas.
-const MAX_JOGADORES = 120;
-const MAX_COMISSAO = 40;
-
-const texto = (v, limite) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, limite) : '');
-const imagem = (v) => (typeof v === 'string' && IMAGEM_OK.test(v) ? v : '');
-const nota = (v) => {
-  const n = Math.round(Number(v));
-  return Number.isFinite(n) ? Math.min(99, Math.max(1, n)) : 50;
-};
-
-/* O que vai no arquivo. Só o que o app sabe ler de volta: nada de estado
-   de tela, nada de preferência de som, nada de identificador de aparelho. */
-export function montarPacote({ time, jogadores, comissao, escalacao }) {
-  return {
-    formato: FORMATO,
-    versao: VERSAO,
-    gerado: new Date().toISOString(),
-    time: { nome: texto(time?.nome, 26), escudo: imagem(time?.escudo) },
-    jogadores: jogadores.map((j) => ({ ...j })),
-    comissao: comissao.map((m) => ({ ...m })),
-    escalacao: {
-      formacao: escalacao.formacao,
-      variacao: escalacao.variacao,
-      slots: { ...escalacao.slots },
-    },
-  };
-}
-
-/* Lê o arquivo de outra pessoa.
-
-   Tudo que entra é copiado campo a campo para um objeto novo — o de fora
-   nunca é aproveitado inteiro. `regras` traz o vocabulário do domínio
-   (posições, características, funções da comissão e as vagas de cada
-   tática), que mora no app: aqui só se confere se o que veio pertence a
-   ele.                                                                    */
-export function lerPacote(cru, regras) {
-  let dados;
-  try {
-    dados = JSON.parse(cru);
-  } catch {
-    throw new Error('Este arquivo não é um time do NoTatiko.');
-  }
-  if (!dados || dados.formato !== FORMATO) {
-    throw new Error('Este arquivo não é um time do NoTatiko.');
-  }
-  if (Number(dados.versao) > VERSAO) {
-    throw new Error('Este time veio de uma versão mais nova do app. Atualize para abrir.');
-  }
-
-  const posicoes = new Set(regras.posicoes);
-  const chaves = regras.atributos;
-
-  const jogadores = (Array.isArray(dados.jogadores) ? dados.jogadores : [])
-    .filter((j) => j && posicoes.has(j.posicao))
-    .slice(0, MAX_JOGADORES)
-    .map((j) => ({
-      id: texto(j.id, 40) || null,
-      apelido: texto(j.apelido, 18) || 'Sem nome',
-      posicao: j.posicao,
-      // a fronteira do gol não se atravessa nem por arquivo: goleiro não é
-      // alternativa de ninguém, nem ninguém é alternativa de goleiro
-      posicoes: (Array.isArray(j.posicoes) ? j.posicoes : [])
-        .filter((p) => posicoes.has(p) && regras.podeAtuarEm(j.posicao, p))
-        .slice(0, 2),
-      foto: imagem(j.foto),
-      ...Object.fromEntries(
-        chaves.filter((c) => j[c] !== undefined).map((c) => [c, nota(j[c])])
-      ),
-    }));
-
-  const comissao = (Array.isArray(dados.comissao) ? dados.comissao : [])
-    .filter((m) => m && typeof m === 'object')
-    .slice(0, MAX_COMISSAO)
-    .map((m) => ({
-      id: texto(m.id, 40) || null,
-      nome: texto(m.nome, 18) || 'Sem nome',
-      funcao: regras.funcoes.includes(m.funcao) ? m.funcao : regras.funcoes[0],
-      foto: imagem(m.foto),
-    }));
-
-  const formacao = texto(dados.escalacao?.formacao, 12);
-  const variacao = texto(dados.escalacao?.variacao, 24);
-
-  // uma vaga só entra se existir naquela tática e se quem está nela tiver
-  // sobrevivido à conferência acima
-  const idsVivos = new Set(jogadores.map((j) => j.id).filter(Boolean));
-  const vagas = new Set(regras.vagas(formacao, variacao));
-  const slotsCrus = dados.escalacao?.slots;
-  const slots = {};
-  for (const [slotId, id] of Object.entries(slotsCrus && typeof slotsCrus === 'object' ? slotsCrus : {})) {
-    if (vagas.has(slotId) && idsVivos.has(id)) slots[slotId] = id;
-  }
-
-  return {
-    time: { nome: texto(dados.time?.nome, 26) || 'Time recebido', escudo: imagem(dados.time?.escudo) },
-    jogadores,
-    comissao,
-    escalacao: { formacao, variacao, slots },
-  };
-}
-
-export async function lerArquivo(file) {
-  if (file.size > LIMITE_ARQUIVO) throw new Error('Arquivo grande demais para ser um time.');
-  return file.text();
-}
+   E é imagem justamente porque não há servidor: uma imagem qualquer um vê,
+   no grupo do WhatsApp, sem instalar nada e sem precisar do outro lado ter
+   o app. Quem recebe não precisa de nada além de olhos.                   */
 
 // nome de arquivo sem nada que atrapalhe sistema de arquivos nenhum
 function apelidarArquivo(nome, extensao) {
   const limpo = (nome || 'time').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'time';
   return `${limpo}.${extensao}`;
-}
-
-export function arquivoDoPacote(pacote) {
-  const corpo = JSON.stringify(pacote);
-  return new File([corpo], apelidarArquivo(pacote.time?.nome, 'notatiko.json'), {
-    type: 'application/json',
-  });
 }
 
 /* =========================================================
@@ -253,6 +119,13 @@ function caminhoEscudo(ctx, x, y, t) {
 // desenha a imagem cobrindo a área (o mesmo que object-fit: cover)
 function cobrir(ctx, img, x, y, w, h) {
   const escala = Math.max(w / img.width, h / img.height);
+  const iw = img.width * escala, ih = img.height * escala;
+  ctx.drawImage(img, x + (w - iw) / 2, y + (h - ih) / 2, iw, ih);
+}
+
+// desenha a imagem inteira dentro da área, sem cortar (object-fit: contain)
+function conter(ctx, img, x, y, w, h) {
+  const escala = Math.min(w / img.width, h / img.height);
   const iw = img.width * escala, ih = img.height * escala;
   ctx.drawImage(img, x + (w - iw) / 2, y + (h - ih) / 2, iw, ih);
 }
@@ -413,6 +286,29 @@ function medalha(ctx, cx, cy, valor, rotulo, cor, escala = 1) {
 
 // sem foto, o disco leva as iniciais: duas letras, venham de uma palavra
 // ou de duas — uma letra sozinha num círculo de 100px parece erro
+/* A marca do clube no canto de baixo à esquerda.
+
+   Ela já morou no círculo central, em luminosidade, como no gramado do
+   app — e ali era fundo: o escudo sumia atrás das linhas e do jogador do
+   meio. Numa imagem que vai para o grupo, a marca é para ser vista.
+
+   Fica inteira, sem o recorte de escudo que o placar usa: quem desenhou o
+   escudo redondo quer ele redondo. Vai por cima das linhas e da vinheta,
+   com sombra, e o canto de baixo à esquerda é o pedaço de gramado que
+   nenhuma tática ocupa — fora da grande área, atrás do lateral.          */
+function marcaDoClube(ctx, escudo) {
+  const t = Math.round(CAMPO.w * .16);
+  const x = CAMPO.x + 26;
+  const y = CAMPO.y + CAMPO.h - t - 26;
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,.65)';
+  ctx.shadowBlur = 24;
+  ctx.shadowOffsetY = 8;
+  conter(ctx, escudo, x, y, t, t);
+  ctx.restore();
+}
+
 function iniciais(apelido = '') {
   const partes = apelido.split(' ').filter(Boolean);
   if (!partes.length) return '?';
@@ -574,22 +470,9 @@ export async function imagemDaEscalacao({ time, tatica, forca, sintonia, slots }
   caminhoArredondado(ctx, CAMPO.x, CAMPO.y, CAMPO.w, CAMPO.h, 26);
   ctx.clip();
   grama(ctx);
-  if (escudo) {
-    // escudo pintado no círculo central, como no campo do app
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(CAMPO.x + CAMPO.w / 2, CAMPO.y + CAMPO.h * .5, CAMPO.w * .131, 0, Math.PI * 2);
-    ctx.clip();
-    // o app pinta o escudo do meio em luminosidade: a marca aparece sem
-    // manchar o gramado com a cor dela
-    ctx.globalCompositeOperation = 'luminosity';
-    ctx.globalAlpha = .42;
-    const d = CAMPO.w * .262;
-    cobrir(ctx, escudo, CAMPO.x + CAMPO.w / 2 - d / 2, CAMPO.y + CAMPO.h * .5 - d / 2, d, d);
-    ctx.restore();
-  }
   linhas(ctx);
   vinheta(ctx);
+  if (escudo) marcaDoClube(ctx, escudo);
 
   // a área útil é a mesma do app: recuo para a carta caber dentro do campo
   const ax = CAMPO.x + CAMPO.w * .01;

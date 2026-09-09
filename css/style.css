@@ -2763,11 +2763,12 @@ input[type=range]::-moz-range-thumb {
 }
 
 /* =========================================================
-   Compartilhar — as opções da folha
+   Compartilhar — a prévia e a saída
 
-   Cada opção diz numa linha o que sai do aparelho e, embaixo, o tamanho
-   do que sai: quantos jogadores vão no arquivo, quantos estão em campo na
-   imagem. Compartilhar às cegas é o que dá vontade de não compartilhar.
+   A prévia vem antes do botão: o que está na tela é exatamente o que vai
+   sair, e embaixo dela a linha diz o tamanho do que sai — a tática e
+   quantos estão em campo. Compartilhar às cegas é o que dá vontade de não
+   compartilhar.
    ========================================================= */
 
 .opcao-partilha {
@@ -2832,7 +2833,7 @@ input[type=range]::-moz-range-thumb {
 .opcao-seta { flex-shrink: 0; width: 20px; height: 20px; color: var(--texto-3); }
 
 /* a prévia é a promessa: o que está aqui é exatamente o que vai sair */
-.previa-partilha { margin-top: 18px; text-align: center; }
+.previa-partilha { margin-bottom: 4px; text-align: center; }
 .previa-partilha img {
   width: 100%;
   max-width: 280px;
@@ -2849,28 +2850,19 @@ input[type=range]::-moz-range-thumb {
   font-size: 11.5px;
   color: var(--texto-3);
 }
-.previa-vazia { padding: 28px 0; font-size: 12.5px; color: var(--texto-3); }
-
-/* substituir o time apaga o que está no aparelho: o bloco avisa em vermelho */
-.dica-bloco.perigo {
-  background: rgba(255, 84, 87, .08);
-  border-color: rgba(255, 84, 87, .32);
+/* o vazio guarda a proporção da imagem (2:3), para a folha não pular de
+   altura quando o campo terminar de ser desenhado */
+.previa-vazia {
+  max-width: 280px;
+  aspect-ratio: 2 / 3;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--raio);
+  background: var(--sup-1);
+  box-shadow: inset 0 0 0 1px var(--borda);
+  font-size: 12.5px;
+  color: var(--texto-3);
 }
-.dica-bloco.perigo b { color: var(--vermelho); }
 
-/* Substituir o time é destrutivo: a mesma alavanca, na cor do perigo.
-
-   O vermelho já é o que diz "isto executa e não volta" nos botões redondos;
-   uma alavanca verde para apagar o elenco inteiro estaria mentindo. */
-.deslizar.perigo::before { background: linear-gradient(90deg, #8f1f21, var(--vermelho)); }
-.deslizar.perigo .deslizar-punho { background: linear-gradient(150deg, #ff9092, var(--vermelho)); }
-.deslizar.perigo .deslizar-rastro i {
-  border-top-color: var(--vermelho);
-  border-right-color: var(--vermelho);
-}
-.deslizar.perigo.confirmado { box-shadow: inset 0 0 0 1px var(--vermelho); }
-
-/* o escudo e o nome do time que chegou são retrato, não formulário */
-.escudo-grande.estatico { cursor: default; }
-.escudo-grande.estatico:active { transform: none; }
-.entrada-titulo.estatico { border-bottom-color: transparent; cursor: default; }
