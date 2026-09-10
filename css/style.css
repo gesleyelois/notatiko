@@ -48,8 +48,13 @@
   --baixo-seguro: env(safe-area-inset-bottom, 0px);
 
   /* HUD: uma linha só no lugar do antigo header + fileira de tiles */
-  --hud-h: 56px;
-  --hud-invasao: 10px;   /* o quanto o HUD desce por cima do gramado */
+  /* O HUD precisa caber a medalha inteira — anel, número e rótulo — mais
+     uma folga até a grama. Menos que isso e o "FORÇA"/"SINTONIA" encosta
+     na linha do campo, que era o que acontecia: a medalha mede 52 e a
+     área útil do HUD media 46, então o rótulo passava 3px para dentro do
+     gramado. A folga é (hud-h - invasão - medalha) / 2. */
+  --hud-h: 66px;
+  --hud-invasao: 5px;    /* o quanto o HUD desce por cima do gramado */
   --elenco-invasao: 14px; /* e o quanto a linha das abas sobe por cima dele */
   --brasao: 34px;
   --medalha: 38px;
@@ -1421,7 +1426,7 @@ input[type=range]::-moz-range-thumb {
 
 /* celular deitado: espaço vertical curto — enxuga o topo e o elenco */
 @media (orientation: landscape) and (max-height: 640px) {
-  :root { --hud-h: 48px; --hud-invasao: 6px; --brasao: 28px; --medalha: 36px; --nome-time: 14px; }
+  :root { --hud-h: 62px; --hud-invasao: 4px; --brasao: 28px; --medalha: 36px; --nome-time: 14px; }
   .coluna-elenco { width: 236px; }
   .emblema-txt small { display: none; }
   .coluna-elenco { --carta-trilho: 70px; }
@@ -2115,7 +2120,7 @@ input[type=range]::-moz-range-thumb {
   }
 
   /* barra e cabeçalhos mais justos, para sobrar campo */
-  :root { --hud-h: 58px; }
+  :root { --hud-h: 68px; }
   .elenco-topo { padding-bottom: 4px; }
   /* altura fixa (carta + respiro) para que trocar de aba não empurre o campo.
      Enxuta ao osso: cada pixel devolvido aqui vira campo, que é quem cresce
