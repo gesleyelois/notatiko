@@ -363,6 +363,22 @@ const TESTES = [
     };
   }],
 
+  ['o placar não encosta no gramado', async () => {
+    const grama = $('#gramado').getBoundingClientRect();
+    const rotulos = $$('.medalha span').map((el) => el.getBoundingClientRect());
+    const folgas = rotulos.map((r) => +(grama.top - r.bottom).toFixed(1));
+    const hud = $('.hud').getBoundingClientRect();
+    // a medalha inteira tem que caber no HUD: o rótulo de baixo não pode
+    // vazar para dentro do campo, nem o anel para cima da barra do sistema
+    const medalha = $('#metrica-forca').getBoundingClientRect();
+
+    return {
+      folgaAteAGrama: folgas,
+      sobraNoTopo: +(medalha.top - hud.top).toFixed(1),
+      ok: folgas.length === 2 && folgas.every((f) => f >= 3) && medalha.top >= hud.top - 1,
+    };
+  }],
+
   ['nada na tela se comporta como página web', async () => {
     const corpo = getComputedStyle(document.body);
     const semRealce = getComputedStyle(document.documentElement).webkitTapHighlightColor;
