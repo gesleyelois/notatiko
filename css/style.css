@@ -2847,23 +2847,61 @@ input[type=range]::-moz-range-thumb {
 .opcao-seta { flex-shrink: 0; width: 20px; height: 20px; color: var(--texto-3); }
 
 /* a prévia é a promessa: o que está aqui é exatamente o que vai sair */
-.previa-partilha { margin-bottom: 4px; text-align: center; }
+.previa-partilha { margin-bottom: 10px; text-align: center; }
+
+.previa-quadro {
+  position: relative;
+  display: inline-block;
+  max-width: 280px;
+  line-height: 0;
+}
 .previa-partilha img {
   width: 100%;
-  max-width: 280px;
-  margin: 0 auto;
   border-radius: var(--raio);
   box-shadow: var(--sombra);
   /* a única imagem do app que quer o menu do sistema: é segurando nela que
      se salva na galeria, sem passar pela folha de partilha */
   -webkit-touch-callout: default;
 }
-.previa-partilha small {
-  display: block;
-  margin-top: 9px;
-  font-size: 11.5px;
-  color: var(--texto-3);
+
+/* "Segure para salvar" sem escrever "segure para salvar": o ponto de toque
+   com as ondas, e a seta de baixar ao lado. O selo não recebe toque —
+   quem precisa sentir o dedo parado é a imagem debaixo dele. */
+.previa-selo {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: rgba(5, 9, 13, .72);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12);
+  backdrop-filter: blur(4px);
+  color: rgba(255, 255, 255, .82);
+  pointer-events: none;
 }
+.previa-selo svg { width: 15px; height: 15px; }
+
+/* o cadeado no lugar do parágrafo sobre não enviar nada sozinho. Tocar
+   nele diz a frase inteira numa torrada, como as medalhas do placar. */
+.selo-privado {
+  display: block;
+  margin: 16px auto 4px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--texto-3);
+  background: rgba(255, 255, 255, .04);
+  box-shadow: inset 0 0 0 1px var(--borda);
+  transition: transform .14s, color .15s;
+}
+.selo-privado:active { transform: scale(.9); color: var(--texto-2); }
+.selo-privado svg { width: 16px; height: 16px; }
 /* o vazio guarda a proporção da imagem (2:3), para a folha não pular de
    altura quando o campo terminar de ser desenhado */
 .previa-vazia {
