@@ -2105,17 +2105,15 @@ function folhaCompartilhar() {
         <span class="opcao-icone">${ic.partilha}</span>
         <span class="opcao-txt">
           <b>Mandar a escalação</b>
-          <small>Vai como imagem, então serve para qualquer um — não precisa ter o app.</small>
           <i>${formacao} ${variacao} · ${escalados} de ${total}</i>
         </span>
         <span class="opcao-seta">${ic.seta}</span>
       </button>
 
-      <p class="ajuda" style="margin-top:16px">
-        Nada é enviado por conta própria: o app desenha a imagem e entrega
-        para você escolher o destino.
-      </p>
-      <div style="height:10px"></div>`,
+      <!-- o cadeado no lugar do parágrafo: quem quiser a frase, toca -->
+      <button class="selo-privado" id="selo-privado" aria-label="Nada é enviado por conta própria">
+        ${ic.cadeado}
+      </button>`,
     aoMontar: () => {
       const previa = $('#previa-partilha');
 
@@ -2123,12 +2121,23 @@ function folhaCompartilhar() {
         if (!$('#previa-partilha')) return;      // a folha fechou antes de ficar pronta
         if (urlDaPrevia) URL.revokeObjectURL(urlDaPrevia);
         urlDaPrevia = URL.createObjectURL(arquivo);
+        // o selo fica POR CIMA da imagem e sem receber toque: é a imagem
+        // que precisa sentir o dedo parado para o sistema oferecer salvar
         previa.innerHTML = `
-          <img src="${urlDaPrevia}" alt="Prévia da escalação">
-          <small>É esta imagem que sai. Segure nela para salvar direto.</small>`;
+          <span class="previa-quadro">
+            <img src="${urlDaPrevia}" alt="Prévia da escalação">
+            <span class="previa-selo" role="img" aria-label="Segure na imagem para salvar">
+              ${ic.segurar}${ic.baixar}
+            </span>
+          </span>`;
       }).catch(() => {
         previa.innerHTML = '<div class="previa-vazia">Não deu para desenhar a escalação.</div>';
       });
+
+      $('#selo-privado').onclick = () => {
+        efeitos.tocar('toque');
+        toast('A imagem é desenhada no aparelho: nada é enviado por conta própria');
+      };
 
       $('#enviar-escalacao').onclick = async () => {
         efeitos.tocar('toque');
