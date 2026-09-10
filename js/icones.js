@@ -23,5 +23,4 @@ export const ic = {
   baixar: svg('<path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M20 13v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6"/>'),
   // dedo parado na tela: o ponto de toque com as ondas em volta
   segurar: svg('<circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/><path d="M7.2 16.8a6.8 6.8 0 0 1 0-9.6"/><path d="M16.8 7.2a6.8 6.8 0 0 1 0 9.6"/><path d="M3.6 20.4a11.9 11.9 0 0 1 0-16.8"/><path d="M20.4 3.6a11.9 11.9 0 0 1 0 16.8"/>'),
-  cadeado: svg('<rect x="4" y="10" width="16" height="10" rx="2.4"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>'),
 };

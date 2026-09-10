@@ -836,6 +836,10 @@ input, textarea, [contenteditable] {
   /* folga no topo para a carta selecionada crescer sem ser cortada */
   padding: 15px 12px 7px;
   scroll-snap-type: x proximity;
+  /* O encaixe da rolagem alinha a carta com a BORDA do trilho, não com o
+     conteúdo: sem isto o navegador rolava os mesmos 12px do respiro e a
+     primeira carta nascia colada na beira da tela. */
+  scroll-padding-inline: 12px;
   /* casado com a carta para que trocar de aba não mexa na altura da coluna */
   min-height: calc(var(--carta-trilho) * 1.4 + 22px);
   align-items: flex-start;
@@ -2131,10 +2135,13 @@ input[type=range]::-moz-range-thumb {
   .coluna-elenco {
     padding-top: 2px;
     padding-bottom: calc(2px + var(--baixo-seguro) * .34);
-    /* sobe por cima da borda do gramado, como o HUD desce nela: sem o vão,
-       some a faixa de fundo que aparecia entre o campo e as abas */
+    /* Sobe por cima da borda do gramado, como o HUD desce nela: sem o vão,
+       aparecia uma faixa de fundo entre o campo e as abas.
+
+       O respiro é o que passa da invasão: com os dois iguais, a aba nascia
+       exatamente na linha do campo, encostada nela. */
     margin-top: calc(var(--elenco-invasao) * -1);
-    padding-top: var(--elenco-invasao);
+    padding-top: calc(var(--elenco-invasao) + 6px);
   }
   .elenco-topo { position: relative; z-index: 3; }
   .elenco-topo { padding-bottom: 2px; }
@@ -2889,24 +2896,6 @@ input[type=range]::-moz-range-thumb {
 }
 .previa-selo svg { width: 15px; height: 15px; }
 
-/* o cadeado no lugar do parágrafo sobre não enviar nada sozinho. Tocar
-   nele diz a frase inteira numa torrada, como as medalhas do placar. */
-.selo-privado {
-  display: block;
-  margin: 16px auto 4px;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--texto-3);
-  background: rgba(255, 255, 255, .04);
-  box-shadow: inset 0 0 0 1px var(--borda);
-  transition: transform .14s, color .15s;
-}
-.selo-privado:active { transform: scale(.9); color: var(--texto-2); }
-.selo-privado svg { width: 16px; height: 16px; }
 /* o vazio guarda a proporção da imagem (2:3), para a folha não pular de
    altura quando o campo terminar de ser desenhado */
 .previa-vazia {

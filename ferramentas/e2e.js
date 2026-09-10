@@ -379,6 +379,29 @@ const TESTES = [
     };
   }],
 
+  ['o elenco não encosta no campo, nem a primeira carta na beira', async () => {
+    const grama = $('#gramado').getBoundingClientRect();
+    const abas = $('.abas').getBoundingClientRect();
+    const placa = $('.placa-tatica').getBoundingClientRect();
+    const trilho = $('#trilho');
+    const primeira = $('#trilho .carta-nova').getBoundingClientRect();
+
+    // no computador o elenco fica ao lado do campo: aí a folga é horizontal
+    const emColuna = abas.top > grama.bottom - 1 || abas.left > grama.right - 1;
+    const folgaDoElenco = abas.left > grama.right - 1
+      ? +(abas.left - grama.right).toFixed(1)
+      : +(abas.top - grama.bottom).toFixed(1);
+
+    return {
+      folgaDoElenco,
+      folgaDaPlaca: +(placa.top - grama.bottom).toFixed(1),
+      // a rolagem por encaixe não pode comer o respiro da primeira carta
+      respiroDaPrimeira: +(primeira.left - trilho.getBoundingClientRect().left).toFixed(1),
+      rolagem: trilho.scrollLeft,
+      ok: emColuna && folgaDoElenco >= 3 && primeira.left - trilho.getBoundingClientRect().left >= 8,
+    };
+  }],
+
   ['nada na tela se comporta como página web', async () => {
     const corpo = getComputedStyle(document.body);
     const semRealce = getComputedStyle(document.documentElement).webkitTapHighlightColor;
@@ -677,15 +700,13 @@ const TESTES = [
     const corpo = $('#folha-corpo');
     const texto = corpo.textContent.replace(/\s+/g, ' ').trim();
     const selo = $('.previa-selo');
-    const cadeado = $('#selo-privado');
 
     const medido = {
       texto,
       letras: texto.length,
-      // as duas explicações que eram parágrafo agora são ícone, e cada uma
-      // se apresenta a quem usa leitor de tela
+      // a explicação que era parágrafo agora é ícone, e se apresenta a
+      // quem usa leitor de tela
       seguraParaSalvar: selo?.getAttribute('aria-label') || null,
-      nadaEnviado: cadeado?.getAttribute('aria-label') || null,
       // o selo não pode roubar o toque demorado da imagem
       seloSemToque: selo ? getComputedStyle(selo).pointerEvents : null,
       paragrafos: corpo.querySelectorAll('p').length,
@@ -696,8 +717,7 @@ const TESTES = [
     return {
       ...medido,
       ok: medido.letras <= 80 && medido.paragrafos === 0
-          && !!medido.seguraParaSalvar && !!medido.nadaEnviado
-          && medido.seloSemToque === 'none',
+          && !!medido.seguraParaSalvar && medido.seloSemToque === 'none',
     };
   }],
 
