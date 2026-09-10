@@ -363,6 +363,26 @@ const TESTES = [
     };
   }],
 
+  ['o escudo alinha com FORÇA e SINTONIA pela linha de baixo', async () => {
+    const base = (sel) => $(sel).getBoundingClientRect().bottom;
+    const escudo = base('#topo-escudo');
+    const rotulos = $$('.medalha span').map((el) => el.getBoundingClientRect().bottom);
+
+    const desalinhos = [escudo - rotulos[0], escudo - rotulos[1]].map((d) => +d.toFixed(1));
+
+    return {
+      baseDoEscudo: +escudo.toFixed(1),
+      baseDosRotulos: rotulos.map((r) => +r.toFixed(1)),
+      desalinhos,
+      // o nome do clube continua centrado no escudo, não alinhado por baixo
+      baseDoSubtitulo: +base('#topo-sub').toFixed(1),
+      // o escudo é a marca do clube: não pode ser o menor item do placar
+      escudoMaiorQueOAnel: $('#topo-escudo').getBoundingClientRect().width
+        > $('#metrica-forca svg').getBoundingClientRect().width,
+      ok: desalinhos.every((d) => Math.abs(d) <= 1),
+    };
+  }],
+
   ['o placar não encosta no gramado', async () => {
     const grama = $('#gramado').getBoundingClientRect();
     const rotulos = $$('.medalha span').map((el) => el.getBoundingClientRect());
