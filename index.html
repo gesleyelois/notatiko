@@ -62,42 +62,10 @@
         <div class="gramado" id="gramado">
         <div class="gramado-fundo">
           <div class="grama"></div>
-          <svg class="linhas" viewBox="0 0 680 907" preserveAspectRatio="none" aria-hidden="true">
-            <defs>
-              <clipPath id="recorte-meio"><circle cx="340" cy="453.5" r="89" /></clipPath>
-            </defs>
-
-            <image id="escudo-campo" class="escudo-campo" x="251" y="364.5" width="178" height="178"
-                   clip-path="url(#recorte-meio)" preserveAspectRatio="xMidYMid slice" />
-
-            <g class="linha-campo">
-              <rect x="8" y="8" width="664" height="891" />
-              <line x1="8" y1="453.5" x2="672" y2="453.5" />
-              <circle cx="340" cy="453.5" r="89" />
-
-              <rect x="143.2" y="8" width="393.6" height="162" />
-              <rect x="250.5" y="8" width="179" height="54" />
-              <path d="M 269.3 170 A 89 89 0 0 0 410.7 170" />
-
-              <rect x="143.2" y="737" width="393.6" height="162" />
-              <rect x="250.5" y="845" width="179" height="54" />
-              <path d="M 269.3 737 A 89 89 0 0 1 410.7 737" />
-
-              <path d="M 8 28 A 20 20 0 0 0 28 8" />
-              <path d="M 652 8 A 20 20 0 0 0 672 28" />
-              <path d="M 8 879 A 20 20 0 0 1 28 899" />
-              <path d="M 652 899 A 20 20 0 0 1 672 879" />
-
-              <rect class="gol-trave" x="304" y="0" width="72" height="8" />
-              <rect class="gol-trave" x="304" y="899" width="72" height="8" />
-            </g>
-
-            <g class="marca-ponto">
-              <circle cx="340" cy="453.5" r="5" />
-              <circle cx="340" cy="116" r="5" />
-              <circle cx="340" cy="791" r="5" />
-            </g>
-          </svg>
+          <!-- as marcações são desenhadas em js/campo.js: o comprimento do
+               campo acompanha a tela, e o círculo do meio nunca estica -->
+          <svg class="linhas" id="linhas-campo" viewBox="0 0 680 907"
+               preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg>
         </div>
           <div class="slots" id="slots"></div>
         </div>

@@ -320,6 +320,49 @@ const TESTES = [
     };
   }],
 
+  ['o círculo do campo é redondo, e nada é pintado no meio', async () => {
+    const svg = $('#linhas-campo');
+    const c = $('.linha-campo circle').getBoundingClientRect();
+    const g = $('#gramado').getBoundingClientRect();
+    const [, , vbLargura, vbAltura] = svg.getAttribute('viewBox').split(' ').map(Number);
+
+    const proporcaoDoCirculo = c.width / c.height;
+    // a caixa do gramado tem que ter a proporção do desenho: é a diferença
+    // entre as duas que estica o campo e achata o círculo
+    const proporcaoDaCaixa = g.width / g.height;
+    const proporcaoDoDesenho = vbLargura / vbAltura;
+
+    return {
+      circulo: [Math.round(c.width), Math.round(c.height)],
+      proporcaoDoCirculo: +proporcaoDoCirculo.toFixed(3),
+      caixa: [Math.round(g.width), Math.round(g.height)],
+      desenho: [vbLargura, vbAltura],
+      // nada de escudo pintado no gramado
+      imagensNoCampo: svg.querySelectorAll('image').length,
+      ok: Math.abs(proporcaoDoCirculo - 1) < 0.02
+          && Math.abs(proporcaoDaCaixa - proporcaoDoDesenho) < 0.01
+          && svg.querySelectorAll('image').length === 0,
+    };
+  }],
+
+  ['o comprimento do campo acompanha a tela, dentro da regra', async () => {
+    const { dentroDaRegra, alturaDoCampo, PROPORCAO_MIN, PROPORCAO_MAX } = await import('../js/campo.js');
+    const svg = $('#linhas-campo');
+    const palco = $('.palco').getBoundingClientRect();
+    const [, , , alturaAtual] = svg.getAttribute('viewBox').split(' ').map(Number);
+
+    return {
+      proporcaoDoPalco: +(palco.width / palco.height).toFixed(3),
+      alturaDesenhada: alturaAtual,
+      esperada: alturaDoCampo(palco.width / palco.height),
+      faixa: [PROPORCAO_MIN, PROPORCAO_MAX],
+      // 68m de largura por 90m a 120m de comprimento
+      dentroDaFaixa: dentroDaRegra(0.2) === PROPORCAO_MIN && dentroDaRegra(9) === PROPORCAO_MAX,
+      ok: alturaAtual === alturaDoCampo(palco.width / palco.height)
+          && dentroDaRegra(0.2) === PROPORCAO_MIN && dentroDaRegra(9) === PROPORCAO_MAX,
+    };
+  }],
+
   ['nada na tela se comporta como página web', async () => {
     const corpo = getComputedStyle(document.body);
     const semRealce = getComputedStyle(document.documentElement).webkitTapHighlightColor;
@@ -693,7 +736,8 @@ const TESTES = [
     const c = await caches.open(nomes[0]);
     const urls = (await c.keys()).map((k) => new URL(k.url).pathname);
     const precisa = ['/index.html', '/css/style.css', '/js/app.js', '/js/audio.js',
-      '/js/compartilhar.js', '/js/falas.js', '/audio/trilha.mp3', '/audio/efeitos/guardar.mp3'];
+      '/js/campo.js', '/js/compartilhar.js', '/js/falas.js',
+      '/audio/trilha.mp3', '/audio/efeitos/guardar.mp3'];
     const faltando = precisa.filter((p) => !urls.some((u) => u.endsWith(p)));
     return {
       cache: nomes[0], itens: urls.length,
