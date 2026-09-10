@@ -669,6 +669,38 @@ const TESTES = [
     };
   }],
 
+  ['a ficha de compartilhar diz o que faz sem parágrafo nenhum', async () => {
+    toque($('#btn-compartilhar'));
+    await ate(() => $('#previa-partilha img'), { oque: 'a prévia', limite: 20000 });
+    await espera(200);
+
+    const corpo = $('#folha-corpo');
+    const texto = corpo.textContent.replace(/\s+/g, ' ').trim();
+    const selo = $('.previa-selo');
+    const cadeado = $('#selo-privado');
+
+    const medido = {
+      texto,
+      letras: texto.length,
+      // as duas explicações que eram parágrafo agora são ícone, e cada uma
+      // se apresenta a quem usa leitor de tela
+      seguraParaSalvar: selo?.getAttribute('aria-label') || null,
+      nadaEnviado: cadeado?.getAttribute('aria-label') || null,
+      // o selo não pode roubar o toque demorado da imagem
+      seloSemToque: selo ? getComputedStyle(selo).pointerEvents : null,
+      paragrafos: corpo.querySelectorAll('p').length,
+    };
+    toque($('#folha-fechar'));
+    await espera(300);
+
+    return {
+      ...medido,
+      ok: medido.letras <= 80 && medido.paragrafos === 0
+          && !!medido.seguraParaSalvar && !!medido.nadaEnviado
+          && medido.seloSemToque === 'none',
+    };
+  }],
+
   ['a marca do clube vai inteira, na placa de pontas arredondadas', async () => {
     const mod = await import('../js/compartilhar.js');
     const { slotsDaTatica } = await import('../js/taticas.js');
