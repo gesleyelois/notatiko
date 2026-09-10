@@ -2,7 +2,8 @@ import { DB } from './db.js';
 import { efeitos, trilha, narrador } from './audio.js';
 import { ic } from './icones.js';
 import { TATICAS, TATICA_PADRAO, slotsDaTatica } from './taticas.js';
-import { entregar, imagemDaEscalacao } from './compartilhar.js';
+import { entregar, imagemDaEscalacao, fundoDaMarca } from './compartilhar.js';
+import { LARGURA, dentroDaRegra, alturaDoCampo, campoEmSVG } from './campo.js';
 
 /* =========================================================
    Domínio
@@ -626,12 +627,45 @@ function renderTopo() {
     ? `${escalados}/11 em campo`
     : 'Toque para começar';
 
+  pintarEmblemas();
+
   const btnSom = $('#btn-som');
   const algumLigado = estado.audio.trilha || estado.audio.efeitos || estado.audio.vozes;
   btnSom.innerHTML = algumLigado ? ic.som : ic.semSom;
   btnSom.classList.toggle('ativo', estado.audio.trilha && trilha.tocando);
   btnSom.setAttribute('aria-label', 'Som do jogo');
   btnSom.setAttribute('aria-expanded', String(!!$('#painel-som')));
+}
+
+/* A placa do emblema toma a cor de fundo da marca.
+
+   Mesma conta da imagem compartilhada: escudo enviado em JPEG vem com
+   fundo chapado, e sem isto o que se vê é um quadrado colado numa placa
+   escura. A leitura do pixel custa uma imagem decodificada, então o
+   resultado fica guardado até a marca mudar.                            */
+let marcaLida = { escudo: null, cor: null };
+
+async function corDaMarca(escudo) {
+  if (marcaLida.escudo === escudo) return marcaLida.cor;
+  let cor = null;
+  if (escudo) {
+    const img = new Image();
+    img.src = escudo;
+    try {
+      await img.decode();
+      cor = fundoDaMarca(img)?.css || null;
+    } catch { /* marca ilegível: a placa fica no metal escuro */ }
+  }
+  marcaLida = { escudo, cor };
+  return cor;
+}
+
+async function pintarEmblemas(escudo = estado.time?.escudo || '') {
+  const cor = await corDaMarca(escudo);
+  if (escudo !== (marcaLida.escudo ?? '')) return;   // trocou no meio do caminho
+  for (const el of document.querySelectorAll('.emblema-brasao, .escudo-grande')) {
+    el.style.setProperty('--fundo-marca', cor || '');
+  }
 }
 
 function renderBarraTatica() {
@@ -653,13 +687,41 @@ function renderBarraTatica() {
   $('#arco-sintonia').style.setProperty('--pct', escalados ? (sintonia() / 100).toFixed(3) : 0);
 }
 
+/* O campo é remedido quando a tela muda de tamanho.
+
+   A proporção da caixa passa a ser a que o palco comporta (dentro do que
+   a regra do futebol admite), e o desenho é refeito com esse comprimento.
+   Assim o campo continua ocupando a tela inteira sem que o desenho
+   precise ser esticado — e é o esticamento que achatava o círculo.      */
+let alturaDoDesenho = 0;
+
+function ajustarCampo() {
+  const palco = $('.palco')?.getBoundingClientRect();
+  if (!palco?.width || !palco?.height) return;
+
+  const proporcao = dentroDaRegra(palco.width / palco.height);
+  document.documentElement.style.setProperty('--proporcao-campo', proporcao.toFixed(4));
+
+  const altura = alturaDoCampo(proporcao);
+  if (altura === alturaDoDesenho) return;
+  alturaDoDesenho = altura;
+
+  const svg = $('#linhas-campo');
+  svg.setAttribute('viewBox', `0 0 ${LARGURA} ${altura}`);
+  svg.innerHTML = campoEmSVG(altura);
+}
+
+// girar o aparelho e abrir o teclado mexem no palco: um quadro depois, a
+// medida já é a nova
+let campoAgendado = null;
+function agendarAjusteDoCampo() {
+  cancelAnimationFrame(campoAgendado);
+  campoAgendado = requestAnimationFrame(ajustarCampo);
+}
+
 function renderCampo() {
   const alvo = $('#slots');
   alvo.innerHTML = '';
-
-  const escudoCampo = $('#escudo-campo');
-  if (estado.time?.escudo) escudoCampo.setAttribute('href', estado.time.escudo);
-  else escudoCampo.removeAttribute('href');
 
   const sel = estado.selecao;
 
@@ -1453,12 +1515,13 @@ function folhaTime() {
              autocapitalize="characters" aria-label="Nome do clube"
              data-vazio="Nome do clube">${escapar(t.nome)}</div>
 
-        <p class="ajuda">O escudo vai para o placar e para o círculo central do gramado.</p>
+        <p class="ajuda">O escudo vai para o placar e para a imagem que você compartilha.</p>
       </div>`,
     rodape: deslizarHTML('salvar-time', estado.time ? 'Salvar' : 'Fundar'),
     aoMontar: () => {
+      pintarEmblemas(escudo);          // a placa da ficha também toma a cor da marca
       ligarCampoEditavel('#in-nome-time', { limite: 26 });
-      ligarUpload('#in-escudo', '#up-escudo', 420, (d) => escudo = d);
+      ligarUpload('#in-escudo', '#up-escudo', 420, (d) => { escudo = d; pintarEmblemas(d); });
       ligarDeslizar('#salvar-time', async () => {
         const nome = textoDe('#in-nome-time');
         if (!nome) return toast('O clube precisa de um nome');
@@ -2327,6 +2390,10 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) clearTimeout(relogioParado); else acordar();
 });
 
+for (const evento of ['resize', 'orientationchange']) {
+  window.addEventListener(evento, agendarAjusteDoCampo);
+}
+
 $('#btn-time').addEventListener('click', folhaTime);
 $('#btn-som').addEventListener('click', abrirPainelSom);
 
@@ -2365,6 +2432,7 @@ async function iniciar() {
   estado.jogadores = await migrarGoleiros(jogadores);
   estado.escalacao = normalizarEscalacao(escalacao, estado.jogadores);
 
+  ajustarCampo();
   renderTudo();
   prepararDesbloqueioDeAudio();
   agendarParado();

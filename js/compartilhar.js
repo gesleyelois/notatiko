@@ -1,3 +1,5 @@
+import { LARGURA, PROPORCAO_MAX, alturaDoCampo, marcasDoCampo } from './campo.js';
+
 /* Compartilhar — a escalação vira imagem.
 
    O aplicativo não tem servidor nem conta: nada sai do aparelho por conta
@@ -62,7 +64,16 @@ const L = 1080;
 const A = 1620;
 const MARGEM = 24;
 const CAMPO = { x: MARGEM, y: 180, w: L - MARGEM * 2 };
-CAMPO.h = Math.round(CAMPO.w / 0.75);        // a mesma proporção do gramado do app
+
+/* O campo da imagem é o mais largo que a regra admite.
+
+   Na tela o comprimento acompanha o aparelho (um iPhone em pé pede um
+   campo mais comprido); aqui o quadro é sempre o mesmo 1080x1620, e o
+   campo mais largo é o que sobra mais espaço para as cartas. As
+   marcações saem da mesma função do app, com a altura desta proporção —
+   nenhum campo é desenhado duas vezes.                                  */
+const CAMPO_VB = alturaDoCampo(PROPORCAO_MAX);
+CAMPO.h = Math.round(CAMPO.w * CAMPO_VB / LARGURA);
 
 /* A carta mede o que mede no app: 17,5% da largura do gramado ou 13% da
    altura, o que for menor. É essa conta que faz onze cartas caberem no
@@ -137,7 +148,7 @@ function caminhoEscudo(ctx, x, y, t) {
    faixa, e o fundo seria descartado justamente nos escudos em que ele é
    mais evidente. Fundo transparente, foto ou degradê não têm cor
    dominante — aí a placa fica no metal escuro.                          */
-function fundoDaMarca(img) {
+export function fundoDaMarca(img) {
   try {
     const n = 64;
     const cv = document.createElement('canvas');
@@ -224,12 +235,13 @@ function grama(ctx) {
   ctx.fillRect(x, y, w, h);
 }
 
-/* As linhas saem do mesmo desenho do index.html (viewBox 680x907), só
-   reescaladas: campo desenhado duas vezes com medidas diferentes é campo
-   que um dia deixa de bater com o outro.                                 */
+/* As marcações vêm de `js/campo.js`, as mesmas que o app desenha em SVG:
+   campo escrito duas vezes é campo que um dia deixa de bater com o
+   outro. Aqui elas só mudam de unidade — do campo de 680 de largura para
+   os pixels do quadro.                                                   */
 function linhas(ctx) {
   const { x, y, w, h } = CAMPO;
-  const e = w / 680;
+  const e = w / LARGURA;
   const px = (v) => x + v * e;
   const py = (v) => y + v * e;
 
@@ -238,50 +250,31 @@ function linhas(ctx) {
   ctx.lineWidth = 4.2;
   ctx.lineCap = 'round';
 
-  ctx.strokeRect(px(8), py(8), 664 * e, 891 * e);
-
-  ctx.beginPath();
-  ctx.moveTo(px(8), py(453.5));
-  ctx.lineTo(px(672), py(453.5));
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(px(340), py(453.5), 89 * e, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // grandes áreas, pequenas áreas e as meias-luas
-  ctx.strokeRect(px(143.2), py(8), 393.6 * e, 162 * e);
-  ctx.strokeRect(px(250.5), py(8), 179 * e, 54 * e);
-  ctx.strokeRect(px(143.2), py(737), 393.6 * e, 162 * e);
-  ctx.strokeRect(px(250.5), py(845), 179 * e, 54 * e);
-
-  ctx.beginPath();
-  ctx.arc(px(340), py(116), 89 * e, 0.62, Math.PI - 0.62);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(px(340), py(791), 89 * e, Math.PI + 0.62, -0.62);
-  ctx.stroke();
-
-  // escanteios
-  const canto = (cx, cy, de, ate) => {
-    ctx.beginPath();
-    ctx.arc(px(cx), py(cy), 20 * e, de, ate);
-    ctx.stroke();
-  };
-  canto(8, 8, 0, Math.PI / 2);
-  canto(672, 8, Math.PI / 2, Math.PI);
-  canto(8, 899, -Math.PI / 2, 0);
-  canto(672, 899, Math.PI, Math.PI * 1.5);
-
-  // traves e marcas
-  ctx.fillStyle = 'rgba(255,255,255,.12)';
-  ctx.fillRect(px(304), py(0), 72 * e, 8 * e);
-  ctx.fillRect(px(304), py(899), 72 * e, 8 * e);
-  ctx.fillStyle = 'rgba(255,255,255,.5)';
-  for (const marca of [453.5, 116, 791]) {
-    ctx.beginPath();
-    ctx.arc(px(340), py(marca), 5 * e, 0, Math.PI * 2);
-    ctx.fill();
+  for (const m of marcasDoCampo(CAMPO_VB)) {
+    if (m.tipo === 'rect') {
+      ctx.strokeRect(px(m.x), py(m.y), m.w * e, m.h * e);
+    } else if (m.tipo === 'linha') {
+      ctx.beginPath();
+      ctx.moveTo(px(m.x1), py(m.y1));
+      ctx.lineTo(px(m.x2), py(m.y2));
+      ctx.stroke();
+    } else if (m.tipo === 'circulo') {
+      ctx.beginPath();
+      ctx.arc(px(m.cx), py(m.cy), m.r * e, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (m.tipo === 'arco') {
+      ctx.beginPath();
+      ctx.arc(px(m.cx), py(m.cy), m.r * e, m.de, m.ate);
+      ctx.stroke();
+    } else if (m.tipo === 'trave') {
+      ctx.fillStyle = 'rgba(255,255,255,.12)';
+      ctx.fillRect(px(m.x), py(m.y), m.w * e, m.h * e);
+    } else if (m.tipo === 'ponto') {
+      ctx.fillStyle = 'rgba(255,255,255,.5)';
+      ctx.beginPath();
+      ctx.arc(px(m.cx), py(m.cy), m.r * e, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
   ctx.restore();
 }

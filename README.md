@@ -8,7 +8,7 @@ do navegador.
 
 ## O que dá para fazer
 
-- **Criar o clube** — nome e escudo, que aparece no topo do app e pintado no círculo central do gramado.
+- **Criar o clube** — nome e escudo, que aparece no topo do app e na imagem que você compartilha.
 - **Criar jogadores** — a carta *é* o formulário: o apelido se escreve nela, a
   foto se troca tocando nela, e as seis características (Ritmo, Finalização,
   Passe, Drible, Defesa, Físico) viram um hexágono que se molda com o dedo.
@@ -84,14 +84,16 @@ se compartilha do mesmo jeito:
 - **A marca no gramado.** Ela já morou no círculo central, em luminosidade
   como no app, e depois no canto do campo. Nos dois lugares disputava espaço
   com as cartas — e o escudo já está no topo, do lado do nome. Uma vez só
-  basta.
+  basta. Pelo mesmo motivo ela saiu também do círculo central do app: lá
+  ficava atrás das cartas, e o gramado é do time, não da marca.
 - **O recorte da marca no formato do brasão.** O placar do app corta em forma
   de escudo porque ali ele é um emblema de 34px; numa imagem que representa o
   clube, escudo redondo perdia os lados e faixa com o ano de fundação sumia.
   A marca agora vai inteira numa placa quadrada de pontas arredondadas, que
   não corta nem obriga a encolher. A placa toma a cor de fundo da marca
   quando ela tem uma só — a borda do arquivo desaparece e o conjunto lê como
-  um emblema só.
+  um emblema só. É a mesma placa do emblema do placar e da ficha do clube:
+  o que se vê no app é o que sai na imagem.
 - **A contagem de "x de 11 em campo".** Quem olha a imagem conta os onze
   sozinho. O rodapé ficou só com a assinatura, e o lugar dela virou campo.
 
@@ -114,6 +116,7 @@ Sem framework, sem build, sem dependências: HTML, CSS e JavaScript com módulos
 | `js/app.js` | Estado, renderização, arrastar e soltar, animações |
 | `js/taticas.js` | As 19 táticas e suas coordenadas em campo |
 | `js/db.js` | Persistência em IndexedDB |
+| `js/campo.js` | O desenho do campo: marcações e comprimento, para o app e para a imagem |
 | `js/compartilhar.js` | A imagem da escalação, desenhada no `canvas` |
 | `js/audio.js` | Trilha sonora, efeitos das ações e narração |
 | `audio/trilha.mp3` | O loop da trilha, renderizado da própria síntese |
@@ -209,6 +212,29 @@ antes de publicar as gravações.
 
 Um botão no topo silencia tudo de uma vez.
 
+## O campo
+
+O gramado tem 68 metros de largura e um comprimento que acompanha a tela.
+
+A largura manda em tudo que é marcação — grande área, pequena área,
+meia-lua, círculo central: todas medidas a partir dela, como num campo de
+verdade. O que sobra de tela vira meio-campo. A regra do futebol admite de 90
+a 120 metros de comprimento para 68 de largura, o que dá de 0,76 a 0,56 de
+proporção; dentro dessa faixa o campo continua sendo campo, e o desenho nunca
+precisa ser esticado para preencher a tela.
+
+Isso existe por causa do círculo do meio. Antes o desenho tinha proporção fixa
+e era esticado até a caixa (`preserveAspectRatio="none"`): num iPhone em pé a
+caixa ficava em 0,57 contra os 0,75 do desenho, e o círculo saía 33% mais alto
+que largo. Esticar o desenho é o único jeito de um círculo sair achatado — e
+encolher o campo para caber a proporção antiga custaria a tela que o campo
+ocupa. Com o comprimento variável não se paga nem um nem outro.
+
+As marcações moram em `js/campo.js`, numa lista de primitivas em unidades de um
+campo de 680 de largura. O app as desenha em SVG; a imagem compartilhada, em
+`canvas`. Campo escrito duas vezes é campo que um dia deixa de bater com o
+outro.
+
 ## Profundidade
 
 Sem perspectiva no gramado. Inclinar o campo em `rotateX` é o gesto óbvio de
@@ -239,10 +265,10 @@ Com o app aberto, no console do navegador:
 const t = await import('./ferramentas/e2e.js'); await t.rodar();
 ```
 
-São 28 testes ponta a ponta contra o DOM e o IndexedDB de verdade: fundar o
+São 30 testes ponta a ponta contra o DOM e o IndexedDB de verdade: fundar o
 clube, criar jogador pela carta, moldar o radar, escalar, trocar de tática,
 sobreviver a uma recarga, o campo ocupar a tela, não sobrar comportamento de
-página web, a escalação virar imagem do tamanho certo, o escudo sair inteiro
-no topo e os onze irem como carta (os dois conferidos pixel a pixel) e o
-cache offline estar completo. Dois deles recarregam a página — depois da
+página web, o círculo do meio-campo ser redondo, a escalação virar imagem do
+tamanho certo, a marca do clube sair inteira e os onze irem como carta (os
+dois conferidos pixel a pixel) e o cache offline estar completo. Dois deles recarregam a página — depois da
 recarga, continue com `await t.continuar()`.

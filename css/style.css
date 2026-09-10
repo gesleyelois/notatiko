@@ -54,7 +54,9 @@
   --brasao: 34px;
   --medalha: 38px;
   --nome-time: 17px;
-  --proporcao-campo: 0.75;
+  /* 680x907, o campo do desenho; o JS remede conforme a tela e o
+     comprimento acompanha, para o círculo do meio nunca esticar */
+  --proporcao-campo: 0.7497;
 
   /* ritmo vertical compartilhado entre o botão de tática e os indicadores,
      para as duas linhas de texto alinharem entre as três caixas */
@@ -195,25 +197,28 @@ input, textarea, [contenteditable] {
   width: var(--brasao);
   height: var(--brasao);
   flex-shrink: 0;
-  /* escudo de verdade, não um avatar redondo */
-  clip-path: polygon(50% 0, 100% 16%, 100% 62%, 50% 100%, 0 62%, 0 16%);
-  background: linear-gradient(160deg, #2a3542, #141a22);
+  /* a marca do clube inteira, numa placa de pontas arredondadas — a mesma
+     da imagem compartilhada. O recorte em forma de brasão que morava aqui
+     comia os lados de escudo redondo e a faixa do ano de fundação. */
+  border-radius: calc(var(--brasao) * .22);
+  background: var(--fundo-marca, linear-gradient(160deg, #2a3542, #141a22));
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--texto-3);
   overflow: hidden;
 }
-/* aro do escudo, desenhado por fora para não ser cortado pelo clip */
+/* o filete que fecha a placa */
 .emblema-brasao::after {
   content: '';
   position: absolute;
   inset: 0;
-  clip-path: polygon(50% 0, 100% 16%, 100% 62%, 50% 100%, 0 62%, 0 16%);
+  border-radius: inherit;
   box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .22);
   pointer-events: none;
 }
-.emblema-brasao img { width: 100%; height: 100%; object-fit: cover; }
+/* `contain` e não `cover`: a marca aparece como foi desenhada */
+.emblema-brasao img { width: 100%; height: 100%; object-fit: contain; padding: 7%; }
 .emblema-brasao svg { width: 46%; height: 46%; opacity: .75; }
 
 /* sem escudo definido, o emblema chama: é a porta dos dados do time */
@@ -397,12 +402,24 @@ input, textarea, [contenteditable] {
   flex: 1;
   min-height: 0;
   display: flex;
+  align-items: center;
   justify-content: center;
+  /* contêiner de tamanho: é dele que sai a medida do gramado abaixo */
+  container-type: size;
 }
 
+/* O gramado cabe no palco pelos DOIS lados.
+
+   Antes a altura era 100% e a largura vinha da proporção, com um
+   `max-width` de reserva. Quando a largura era o limite — celular em pé —,
+   o max-width cortava a largura e a altura continuava em 100%: a caixa
+   saía fora de proporção e o desenho do campo era esticado junto,
+   achatando o círculo do meio. Com o `min`, quem manda é o lado que
+   aperta, e a proporção fica intacta.                                    */
 .gramado {
   position: relative;
-  height: 100%;
+  height: min(100cqh, calc(100cqw / var(--proporcao-campo)));
+  width: auto;
   aspect-ratio: var(--proporcao-campo);
   max-width: 100%;
   container-type: size;
@@ -437,9 +454,6 @@ input, textarea, [contenteditable] {
 }
 .linha-campo .gol-trave { fill: rgba(255, 255, 255, .12); }
 .marca-ponto { fill: rgba(255, 255, 255, .5); }
-
-/* escudo pintado dentro do círculo central */
-.escudo-campo { opacity: .42; mix-blend-mode: luminosity; }
 
 /* vinheta e luz de estádio */
 .gramado::after {
@@ -1407,7 +1421,7 @@ input[type=range]::-moz-range-thumb {
 
 /* celular deitado: espaço vertical curto — enxuga o topo e o elenco */
 @media (orientation: landscape) and (max-height: 640px) {
-  :root { --hud-h: 48px; --hud-invasao: 6px; --brasao: 28px; --medalha: 36px; --nome-time: 14px; --proporcao-campo: 0.86; }
+  :root { --hud-h: 48px; --hud-invasao: 6px; --brasao: 28px; --medalha: 36px; --nome-time: 14px; }
   .coluna-elenco { width: 236px; }
   .emblema-txt small { display: none; }
   .coluna-elenco { --carta-trilho: 70px; }
@@ -1636,9 +1650,10 @@ input[type=range]::-moz-range-thumb {
   position: relative;
   width: 172px;
   height: 172px;
-  border-radius: 50%;
+  /* a mesma placa do emblema do placar, no tamanho da ficha */
+  border-radius: 34px;
   overflow: hidden;
-  background: var(--sup-2);
+  background: var(--fundo-marca, var(--sup-2));
   border: 2px solid rgba(255, 255, 255, .2);
   display: flex;
   flex-direction: column;
@@ -1656,7 +1671,7 @@ input[type=range]::-moz-range-thumb {
 }
 .escudo-grande:active { transform: scale(.96); }
 .escudo-grande svg { width: 34px; height: 34px; }
-.escudo-grande img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.escudo-grande img { position: absolute; inset: 7%; width: 86%; height: 86%; object-fit: contain; }
 .escudo-grande input { display: none; }
 
 .troca-escudo {
@@ -2073,13 +2088,12 @@ input[type=range]::-moz-range-thumb {
    7.4em), então os dois fatores precisam manter a proporção 7.4:1.
    ========================================================= */
 
-/* Em pé o campo preenche a largura: sobra menos margem, as cartas crescem e a
-   barra (também 100%) alinha sem depender de medida nenhuma. Abaixo de 500px de
-   altura em pé (nenhum celular real) a trava de proporção volta, senão o campo
-   viraria uma faixa deitada. */
-@media (orientation: portrait) and (min-height: 500px) {
-  .gramado { aspect-ratio: auto; width: 100%; }
-}
+/* Em pé o campo preenchia a largura soltando a proporção (`aspect-ratio:
+   auto`), e o desenho ia junto: num iPhone em pé a caixa ficava em 0,57
+   contra os 0,75 do `viewBox`, e o círculo do meio saía 33% mais alto que
+   largo. Agora quem se ajusta é o COMPRIMENTO do campo — `js/campo.js`
+   remede a proporção e redesenha as marcações —, então o gramado continua
+   preenchendo a tela sem esticar nada. Nada a fazer aqui. */
 
 /* Em pé o campo é o assunto principal: garante metade da tela para ele e
    deixa elenco e comissão dividirem o resto, rolando se não couberem.
