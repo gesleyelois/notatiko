@@ -2109,11 +2109,7 @@ function folhaCompartilhar() {
         </span>
         <span class="opcao-seta">${ic.seta}</span>
       </button>
-
-      <!-- o cadeado no lugar do parágrafo: quem quiser a frase, toca -->
-      <button class="selo-privado" id="selo-privado" aria-label="Nada é enviado por conta própria">
-        ${ic.cadeado}
-      </button>`,
+`,
     aoMontar: () => {
       const previa = $('#previa-partilha');
 
@@ -2133,11 +2129,6 @@ function folhaCompartilhar() {
       }).catch(() => {
         previa.innerHTML = '<div class="previa-vazia">Não deu para desenhar a escalação.</div>';
       });
-
-      $('#selo-privado').onclick = () => {
-        efeitos.tocar('toque');
-        toast('A imagem é desenhada no aparelho: nada é enviado por conta própria');
-      };
 
       $('#enviar-escalacao').onclick = async () => {
         efeitos.tocar('toque');
