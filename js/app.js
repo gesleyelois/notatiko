@@ -2088,8 +2088,6 @@ async function prepararImagem() {
 }
 
 function folhaCompartilhar() {
-  const escalados = idsEscalados().size;
-  const total = slotsFormacao().length;
   const { formacao, variacao } = estado.escalacao;
 
   escalacaoEmImagem = null;
@@ -2105,7 +2103,7 @@ function folhaCompartilhar() {
         <span class="opcao-icone">${ic.partilha}</span>
         <span class="opcao-txt">
           <b>Mandar a escalação</b>
-          <i>${formacao} ${variacao} · ${escalados} de ${total}</i>
+          <i>${formacao} ${variacao}</i>
         </span>
         <span class="opcao-seta">${ic.seta}</span>
       </button>

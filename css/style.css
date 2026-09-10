@@ -56,7 +56,10 @@
   --hud-h: 66px;
   --hud-invasao: 5px;    /* o quanto o HUD desce por cima do gramado */
   --elenco-invasao: 14px; /* e o quanto a linha das abas sobe por cima dele */
-  --brasao: 34px;
+  --brasao: 42px;
+  /* o vão e o rótulo que a medalha tem embaixo do anel: é o que os glifos
+     do topo descontam para acompanharem o anel, e não o rótulo */
+  --medalha-rotulo: 13px;
   --medalha: 38px;
   --nome-time: 17px;
   /* 680x907, o campo do desenho; o JS remede conforme a tela e o
@@ -174,14 +177,24 @@ input, textarea, [contenteditable] {
   z-index: 3;
   flex-shrink: 0;
   display: flex;
-  align-items: center;
+  /* Tudo alinhado pela linha de baixo: a base do escudo, a do nome do
+     clube e a dos rótulos FORÇA e SINTONIA caem na mesma linha. Centrado,
+     cada bloco parava numa altura diferente, porque a medalha (anel mais
+     rótulo) é bem mais alta que o escudo. */
+  align-items: flex-end;
   gap: 8px;
   height: calc(var(--hud-h) + var(--topo-seguro));
   padding: var(--topo-seguro) 4px 0;
   /* o gradiente morre no gramado: nada de linha separando os dois */
   margin-bottom: calc(var(--hud-invasao) * -1);
-  padding-bottom: var(--hud-invasao);
+  /* a invasão mais o respiro até a grama: é o respiro que separa a linha
+     de baixo do HUD da linha do campo */
+  padding-bottom: calc(var(--hud-invasao) + 6px);
 }
+
+/* os glifos de compartilhar e som acompanham o ANEL das medalhas: descem
+   o rótulo que elas têm embaixo e param na mesma altura do anel */
+.btn-som, .btn-hud { margin-bottom: var(--medalha-rotulo); }
 
 /* ---- escudo: é ele que abre os dados do time ---- */
 
@@ -191,7 +204,8 @@ input, textarea, [contenteditable] {
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 3px 8px 3px 3px;
+  /* sem respiro embaixo: é a base do escudo que alinha com a dos rótulos */
+  padding: 3px 8px 0 3px;
   text-align: left;
   transition: transform .14s;
 }
@@ -1430,7 +1444,7 @@ input[type=range]::-moz-range-thumb {
 
 /* celular deitado: espaço vertical curto — enxuga o topo e o elenco */
 @media (orientation: landscape) and (max-height: 640px) {
-  :root { --hud-h: 62px; --hud-invasao: 4px; --brasao: 28px; --medalha: 36px; --nome-time: 14px; }
+  :root { --hud-h: 62px; --hud-invasao: 4px; --brasao: 36px; --medalha: 36px; --nome-time: 14px; }
   .coluna-elenco { width: 236px; }
   .emblema-txt small { display: none; }
   .coluna-elenco { --carta-trilho: 70px; }
@@ -2310,7 +2324,7 @@ input[type=range]::-moz-range-thumb {
 
 /* 320px de largura: o nome do clube encolhe para caber inteiro */
 @media (max-width: 340px) {
-  :root { --nome-time: 14px; --brasao: 30px; --medalha: 34px; }
+  :root { --nome-time: 14px; --brasao: 36px; --medalha: 34px; }
   .emblema-txt small { font-size: 9px; }
 }
 
