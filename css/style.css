@@ -182,7 +182,9 @@ input, textarea, [contenteditable] {
      cada bloco parava numa altura diferente, porque a medalha (anel mais
      rótulo) é bem mais alta que o escudo. */
   align-items: flex-end;
-  gap: 8px;
+  /* apertado de propósito: o placar tem cinco controles e o nome do clube
+     disputa a mesma linha. Cada ponto de vão aqui é ponto de nome ali. */
+  gap: 7px;
   height: calc(var(--hud-h) + var(--topo-seguro));
   padding: var(--topo-seguro) 4px 0;
   /* o gradiente morre no gramado: nada de linha separando os dois */
@@ -390,7 +392,7 @@ input, textarea, [contenteditable] {
 
 .btn-som, .btn-hud {
   flex-shrink: 0;
-  width: 30px;
+  width: 28px;
   height: var(--medalha);
   display: flex;
   align-items: center;

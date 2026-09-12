@@ -2625,6 +2625,9 @@ for (const evento of ['resize', 'orientationchange']) {
 $('#btn-time').addEventListener('click', folhaTime);
 $('#btn-som').addEventListener('click', abrirPainelSom);
 
+$('#btn-escalacoes').innerHTML = ic.marcador;
+$('#btn-escalacoes').addEventListener('click', () => { limparSelecao(); folhaEscalacoes(); });
+
 $('#btn-compartilhar').innerHTML = ic.partilha;
 $('#btn-compartilhar').addEventListener('click', () => { limparSelecao(); folhaCompartilhar(); });
 
