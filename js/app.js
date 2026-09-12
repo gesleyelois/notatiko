@@ -106,6 +106,8 @@ const estado = {
   jogadores: [],
   comissao: [],
   escalacao: { ...TATICA_PADRAO, slots: {} },
+  // as escalações guardadas, da mais recente para a mais antiga
+  guardadas: [],
   // três canais independentes: dá para calar a trilha e manter a narração.
   // O 'som' antigo vira o padrão dos três, para quem já tinha preferência.
   audio: {
@@ -207,10 +209,15 @@ function tierDe(nota) {
   return 'bronze';
 }
 
-const slotsFormacao = () => slotsDaTatica(estado.escalacao.formacao, estado.escalacao.variacao);
+/* As contas valem para qualquer escalação, não só para a que está em campo:
+   é assim que uma escalação guardada mostra Força e Sintonia no fichário sem
+   precisar entrar em campo para ser medida. Sem argumento, é a do campo.   */
+const slotsDe = (escalacao) => slotsDaTatica(escalacao.formacao, escalacao.variacao);
+const slotsFormacao = () => slotsDe(estado.escalacao);
 const jogadorPorId = (id) => estado.jogadores.find((j) => j.id === id) || null;
 const jogadorNoSlot = (slotId) => jogadorPorId(estado.escalacao.slots[slotId]);
-const idsEscalados = () => new Set(Object.values(estado.escalacao.slots).filter(Boolean));
+const idsEscalados = (escalacao = estado.escalacao) =>
+  new Set(Object.values(escalacao.slots).filter(Boolean));
 
 /* Uma escalação só entra no estado depois de conferida: a tática e a
    variação têm que existir, as vagas têm que ser as daquela tática e cada
@@ -238,20 +245,23 @@ function normalizarEscalacao(escalacao, jogadores) {
 
 // Força = média das notas NA POSIÇÃO em que cada um foi escalado, não da nota
 // natural. Escalar alguém fora de posição custa força de verdade.
-function notaTime() {
-  const notas = slotsFormacao()
-    .map((slot) => { const j = jogadorNoSlot(slot.id); return j ? notaNaPosicao(j, slot.pos) : null; })
+function notaTime(escalacao = estado.escalacao) {
+  const notas = slotsDe(escalacao)
+    .map((slot) => {
+      const j = jogadorPorId(escalacao.slots[slot.id]);
+      return j ? notaNaPosicao(j, slot.pos) : null;
+    })
     .filter((n) => n !== null);
   if (!notas.length) return null;
   return Math.round(notas.reduce((a, b) => a + b, 0) / notas.length);
 }
 
 // Sintonia com a tática: posição exata vale 100, mesmo setor 60, setor vizinho 25.
-function sintonia() {
-  const slots = slotsFormacao();
+function sintonia(escalacao = estado.escalacao) {
+  const slots = slotsDe(escalacao);
   let pontos = 0;
   for (const slot of slots) {
-    const j = jogadorNoSlot(slot.id);
+    const j = jogadorPorId(escalacao.slots[slot.id]);
     if (!j) continue;
     if (j.posicao === slot.pos) pontos += 100;
     else if (atuaEm(j, slot.pos)) pontos += 85;   // joga aí também, mas a casa é outra
@@ -1641,15 +1651,29 @@ function folhaTatica() {
     })
   ).join('');
 
+  const guardadas = estado.guardadas.length;
+
   abrirFolha({
-    titulo: 'Escolher tática',
+    titulo: 'Tática',
     corpo: `
+      <button class="opcao-partilha" id="abrir-fichario">
+        <span class="opcao-icone">${ic.marcador}</span>
+        <span class="opcao-txt">
+          <b>Minhas escalações</b>
+          <i>${guardadas ? `${guardadas} no fichário` : 'Nada guardado ainda'}</i>
+        </span>
+        <span class="opcao-seta">${ic.seta}</span>
+      </button>
+
+      <div class="titulo-bloco">Desenhos</div>
       <p class="ajuda" style="margin:0 0 18px">
         Toque no desenho que combina com seu time. Os titulares são reencaixados
         automaticamente pela posição de cada um.
       </p>
       <div class="grade-taticas">${opcoes}</div>`,
     aoMontar: () => {
+      $('#abrir-fichario').onclick = () => { efeitos.tocar('toque'); folhaEscalacoes(); };
+
       $('#folha-corpo').querySelectorAll('.opcao-tatica').forEach((b) => {
         b.onclick = async () => {
           fecharFolha();
@@ -1659,6 +1683,212 @@ function folhaTatica() {
       });
     },
   });
+}
+
+/* ---------- Escalações guardadas: o fichário do técnico ----------
+
+   Tática é o desenho; escalação é o desenho com os onze dentro. Guardar só a
+   tática não devolveria o time — quem monta um 4-3-3 de bola no chão e um
+   3-5-2 de bola longa quer os dois de volta com cada um no seu lugar.
+
+   O registro guarda a tática, a variação e quem estava em cada vaga: ids, não
+   cópias dos jogadores. Assim editar um jogador não deixa a escalação
+   guardada contando a versão velha dele, e Força e Sintonia são recontadas na
+   hora de mostrar — o fichário nunca discorda do campo. Jogador dispensado
+   depois de guardar deixa a vaga aberta, e é `normalizarEscalacao` quem
+   apara isso na leitura, do mesmo jeito que apara o que vem do banco.     */
+
+// duas escalações são a mesma quando a tática, a variação e as vagas batem
+const mesmaEscalacao = (a, b) =>
+  a.formacao === b.formacao && a.variacao === b.variacao
+  && JSON.stringify(Object.entries(a.slots).sort()) ===
+     JSON.stringify(Object.entries(b.slots).sort());
+
+const nomeDaTatica = ({ formacao, variacao }) => `${formacao} ${variacao}`;
+
+// sem nome dado, a escalação se chama a tática — guardar não exige digitar
+const nomePara = (texto) => texto || nomeDaTatica(estado.escalacao);
+
+/* Fichário é de time pronto: escalação pela metade não se guarda.
+
+   Meio time guardado não serve para nada — voltar ao campo devolveria as
+   mesmas vagas abertas, e a Força de sete jogadores não compara com a de
+   onze. Então o que falta é dito antes, na própria ficha, e o deslizar
+   recusa em vez de guardar um rascunho.                                  */
+const faltamParaOsOnze = () => slotsFormacao().length - idsEscalados().size;
+
+const faltamHTML = () => {
+  const faltam = faltamParaOsOnze();
+  return faltam === 1 ? 'Falta 1 jogador para os onze' : `Faltam ${faltam} jogadores para os onze`;
+};
+
+function itemGuardadaHTML(g) {
+  const escalacao = normalizarEscalacao(g, estado.jogadores);
+  const slots = slotsDe(escalacao);
+  const escalados = idsEscalados(escalacao).size;
+  const forca = notaTime(escalacao);
+  const sint = escalados ? sintonia(escalacao) : null;
+  const emCampo = mesmaEscalacao(escalacao, estado.escalacao);
+
+  // o mini-campo mostra o desenho e o que está preenchido: bolinha cheia é
+  // vaga ocupada, apagada é vaga aberta
+  const pontos = slots
+    .map((slot) => `<b class="${escalacao.slots[slot.id] ? '' : 'aberta'}"
+                       style="left:${slot.x}%;top:${slot.y}%"></b>`).join('');
+
+  // só a tática e as duas medidas do placar: quantas vagas estão abertas já
+  // se vê nas bolinhas apagadas do campinho
+  const medidas = escalados
+    ? `Força ${forca} · Sintonia ${sint}%`
+    : 'Sem jogadores no elenco';
+
+  return `
+    <div class="item-guardada ${emCampo ? 'ativa' : ''}">
+      <button class="guardada" data-usar="${g.id}">
+        ${miniCampoHTML(pontos, 'mini-guardada')}
+        <span class="guardada-txt">
+          <b>${escapar(g.nome)}</b>
+          <i>${nomeDaTatica(escalacao)}</i>
+          <small>${medidas}</small>
+        </span>
+        <span class="opcao-seta">${emCampo ? ic.confere : ic.seta}</span>
+      </button>
+      <button class="guardada-apagar" data-apagar="${g.id}"
+              aria-label="Apagar escalação guardada">${ic.lixeira}</button>
+    </div>`;
+}
+
+function folhaEscalacoes() {
+  const corpoHTML = () => `
+      <div class="cena-guardar">
+        <div class="entrada-titulo" id="in-nome-escalacao" ${CAMPO_EDITAVEL}
+             autocapitalize="characters" aria-label="Nome da escalação"
+             data-vazio="${nomeDaTatica(estado.escalacao)}"></div>
+        ${faltamParaOsOnze() ? `<p class="ajuda">${faltamHTML()}</p>` : ''}
+      </div>
+
+      ${estado.guardadas.length ? `
+        <div class="titulo-bloco">No fichário</div>
+        <div class="lista-guardadas">${estado.guardadas.map(itemGuardadaHTML).join('')}</div>`
+      : '<div class="dica-bloco">Nada guardado ainda.</div>'}
+      <div style="height:10px"></div>`;
+
+  // O deslizar se consome ao confirmar (é o que impede o duplo envio), então
+  // guardar e apagar repintam a folha em vez de reabri-la: a lista mostra o
+  // que acabou de entrar e o punho volta ao começo, sem o som de abrir de novo.
+  const ligar = () => {
+    ligarCampoEditavel('#in-nome-escalacao', { limite: 24 });
+
+    ligarDeslizar('#guardar-escalacao', async () => {
+      const digitado = textoDe('#in-nome-escalacao');
+      const guardou = await guardarEscalacaoAtual(nomePara(digitado));
+      // desistir de substituir devolve o nome digitado; guardar limpa o campo,
+      // que volta a anunciar a tática
+      if ($('#in-nome-escalacao')) pintar(guardou ? '' : digitado);
+    });
+
+    for (const b of $('#folha-corpo').querySelectorAll('[data-usar]')) {
+      b.onclick = () => {
+        const g = estado.guardadas.find((x) => x.id === b.dataset.usar);
+        if (g) usarGuardada(g);
+      };
+    }
+
+    for (const b of $('#folha-corpo').querySelectorAll('[data-apagar]')) {
+      const g = estado.guardadas.find((x) => x.id === b.dataset.apagar);
+      if (!g) continue;
+      // o nome entra pela API do DOM, não pelo HTML: nome com aspas não
+      // quebraria o atributo, e quem usa leitor de tela ouve qual é a ficha
+      b.setAttribute('aria-label', `Apagar ${g.nome}`);
+      b.onclick = async () => {
+        if (await apagarGuardada(g) && $('#folha-corpo')) pintar();
+      };
+    }
+  };
+
+  const pintar = (nome = '') => {
+    $('#folha-corpo').innerHTML = corpoHTML();
+    $('#folha-rodape').innerHTML = deslizarHTML('guardar-escalacao', 'Guardar');
+    if (nome) $('#in-nome-escalacao').textContent = nome;
+    ligar();
+  };
+
+  abrirFolha({
+    titulo: 'Escalações',
+    corpo: corpoHTML(),
+    rodape: deslizarHTML('guardar-escalacao', 'Guardar'),
+    aoMontar: ligar,
+  });
+}
+
+async function guardarEscalacaoAtual(nome) {
+  if (faltamParaOsOnze()) {
+    // a ficha já diz quantos faltam: a torrada só responde ao gesto
+    toast('Time incompleto');
+    return false;
+  }
+
+  // mesmo nome é a forma de atualizar uma guardada: pergunta e substitui no
+  // lugar, em vez de deixar duas fichas com o mesmo rótulo
+  const igual = estado.guardadas.find((g) => g.nome.toLowerCase() === nome.toLowerCase());
+  if (igual) {
+    const trocar = await confirmar({
+      titulo: 'Já existe',
+      texto: `Substituir "${igual.nome}" pelo time que está em campo?`,
+      acao: 'Substituir',
+      cancelar: 'Manter a guardada',
+      icone: 'troca',
+    });
+    if (!trocar) return false;
+  }
+
+  const registro = {
+    id: igual?.id || uid(),
+    nome,
+    formacao: estado.escalacao.formacao,
+    variacao: estado.escalacao.variacao,
+    slots: { ...estado.escalacao.slots },
+    guardadaEm: Date.now(),
+  };
+
+  await DB.guardarEscalacao(registro);
+  estado.guardadas = [registro, ...estado.guardadas.filter((g) => g.id !== registro.id)];
+  efeitos.tocar('guardar');
+  toast(igual ? `${nome} atualizada` : `${nome} guardada`);
+  return true;
+}
+
+async function usarGuardada(g) {
+  const escalacao = normalizarEscalacao(g, estado.jogadores);
+  // quem foi dispensado depois de guardar não volta: a vaga fica aberta
+  const perdidos = Object.keys(g.slots || {}).length - Object.keys(escalacao.slots).length;
+
+  const antes = capturarCartas();
+  estado.escalacao = escalacao;
+  await DB.salvarEscalacao(estado.escalacao);
+  fecharFolha();
+  renderTudo();
+  animarTransicao(antes);
+  efeitos.tocar('tatica');
+  setTimeout(() => narrador.falar('tatica'), 240);
+  toast(perdidos
+    ? `${g.nome} em campo · ${perdidos} ${perdidos === 1 ? 'vaga aberta' : 'vagas abertas'}`
+    : `${g.nome} em campo`);
+}
+
+async function apagarGuardada(g) {
+  const apagar = await confirmar({
+    titulo: 'Apagar escalação',
+    texto: `"${g.nome}" sai do fichário. O time em campo não muda.`,
+    acao: 'Apagar',
+  });
+  if (!apagar) return false;
+
+  await DB.removerGuardada(g.id);
+  estado.guardadas = estado.guardadas.filter((x) => x.id !== g.id);
+  efeitos.tocar('excluir');
+  toast(`${g.nome} apagada`);
+  return true;
 }
 
 /* ---------- Força: o quanto o time é forte ---------- */
@@ -2419,10 +2649,13 @@ $('#metrica-encaixe').addEventListener('click', folhaSintonia);
    ========================================================= */
 
 async function iniciar() {
-  const [time, jogadores, escalacao, comissao] = await Promise.all([
+  const [time, jogadores, escalacao, comissao, guardadas] = await Promise.all([
     DB.obterTime(), DB.listarJogadores(), DB.obterEscalacao(), DB.listarComissao(),
+    DB.listarGuardadas(),
   ]);
   estado.comissao = comissao;
+  // a mais recente em cima: é a que se quer guardar de novo ou devolver ao campo
+  estado.guardadas = guardadas.sort((a, b) => (b.guardadaEm || 0) - (a.guardadaEm || 0));
 
   efeitos.ligado = estado.audio.efeitos;
   narrador.ligado = estado.audio.vozes;

@@ -16,6 +16,10 @@ do navegador.
   Confirma-se deslizando, não apertando botão.
 - **Escalar** — arraste do elenco para o campo, ou toque no jogador e depois na posição. As cartas voam até o lugar.
 - **19 táticas** — 10 formações com variações (4-4-2 Losango, 4-3-3 Falso 9, 3-5-2 Alas ofensivos…), escolhidas pelo desenho do time.
+- **Guardar escalações** — o time completo vira ficha no fichário, com nome:
+  a tática, a variação e quem estava em cada vaga. Depois, um toque devolve os
+  onze ao campo — dá para ter um time para cada jogo. Fica atrás da placa da
+  tática.
 - **Força e Sintonia** — duas medalhas no placar, com o arco contando o valor.
   Toque para ver de onde cada número saiu.
 - **Compartilhar** — a escalação vira uma imagem do campo, com as cartas dos
@@ -96,6 +100,36 @@ se compartilha do mesmo jeito:
   o que se vê no app é o que sai na imagem.
 - **A contagem de "x de 11 em campo".** Quem olha a imagem conta os onze
   sozinho. O rodapé ficou só com a assinatura, e o lugar dela virou campo.
+
+## O fichário
+
+Tática é o desenho; escalação é o desenho com os onze dentro. Guardar só a
+tática não devolveria o time — quem monta um 4-3-3 de bola no chão e um 3-5-2
+de bola longa quer os dois de volta com cada um no seu lugar. Por isso a ficha
+guarda as três coisas: formação, variação e quem estava em cada vaga.
+
+O que ela guarda são **ids, não cópias dos jogadores**. Editar a carta de
+alguém depois de guardar não deixa a ficha contando a versão velha dele, e
+Força e Sintonia são recontadas na hora de abrir o fichário — o que está
+guardado nunca discorda do campo. Quem foi dispensado deixa a vaga aberta: a
+bolinha no campinho da ficha fica apagada, e voltar ao campo escala os que
+ficaram. É a mesma conferência que apara a escalação que vem do banco.
+
+Só time completo entra: meio time guardado não serve para nada — voltar ao
+campo devolveria as mesmas vagas abertas, e a Força de sete jogadores não
+compara com a de onze. Com o time pela metade a ficha diz quantos faltam e o
+deslizar recusa.
+
+Guardar não exige digitar: o campo de nome vazio já mostra o nome que a
+escalação terá, que é a própria tática. Nome que já existe pergunta antes de
+substituir — é essa a forma de atualizar uma ficha, em vez de ficar com duas
+com o mesmo rótulo.
+
+O fichário mora atrás da placa da tática, não no placar. O placar é uma linha
+só e já está cheio: um sexto glifo ali custaria o nome do clube, que é a
+identidade do time no topo do app — num celular de 390 pontos, o nome cai de
+128 para 90 pontos de largura e "Meu Time" já não cabe. E a prancheta da
+tática é o lugar do desenho do time; é ali que se procura o time já desenhado.
 
 ## Rodando localmente
 
@@ -265,10 +299,11 @@ Com o app aberto, no console do navegador:
 const t = await import('./ferramentas/e2e.js'); await t.rodar();
 ```
 
-São 30 testes ponta a ponta contra o DOM e o IndexedDB de verdade: fundar o
+São 37 testes ponta a ponta contra o DOM e o IndexedDB de verdade: fundar o
 clube, criar jogador pela carta, moldar o radar, escalar, trocar de tática,
 sobreviver a uma recarga, o campo ocupar a tela, não sobrar comportamento de
-página web, o círculo do meio-campo ser redondo, a escalação virar imagem do
+página web, o círculo do meio-campo ser redondo, o fichário recusar time pela
+metade e devolver a guardada inteira ao campo, a escalação virar imagem do
 tamanho certo, a marca do clube sair inteira e os onze irem como carta (os
-dois conferidos pixel a pixel) e o cache offline estar completo. Dois deles recarregam a página — depois da
-recarga, continue com `await t.continuar()`.
+dois conferidos pixel a pixel) e o cache offline estar completo. Três deles
+recarregam a página — depois da recarga, continue com `await t.continuar()`.

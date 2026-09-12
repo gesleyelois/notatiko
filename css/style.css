@@ -1636,6 +1636,101 @@ input[type=range]::-moz-range-thumb {
 .opcao-tatica.ativa b { color: var(--acento); }
 
 
+/* ---- fichário: as escalações guardadas ---- */
+
+.cena-guardar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2px 0 4px;
+}
+.cena-guardar .ajuda { text-align: center; max-width: 300px; margin: 10px 0 0; }
+
+.lista-guardadas { display: flex; flex-direction: column; gap: 9px; }
+
+.item-guardada { display: flex; align-items: center; gap: 8px; }
+
+/* a ficha é uma linha só: o desenho da tática, o nome e o que ela mede */
+.guardada {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 11px;
+  border-radius: var(--raio);
+  background: var(--sup-1);
+  box-shadow: inset 0 0 0 1px var(--borda);
+  text-align: left;
+  transition: transform .14s ease, box-shadow .18s ease;
+}
+.guardada:active { transform: scale(.985); box-shadow: inset 0 0 0 1px var(--borda-clara); }
+
+.mini-guardada { width: 34px; flex-shrink: 0; border-radius: 6px; }
+.mini-guardada b { width: 4.5px; height: 4.5px; }
+/* vaga aberta na escalação guardada: a bolinha fica só marcada, não cheia */
+.mini-campo b.aberta { background: rgba(255, 255, 255, .3); box-shadow: none; }
+
+.guardada-txt { flex: 1; min-width: 0; }
+.guardada-txt b {
+  display: block;
+  font-family: var(--fonte-cond);
+  font-size: 15.5px;
+  font-weight: 800;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+}
+.guardada-txt b, .guardada-txt i, .guardada-txt small {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.guardada-txt i {
+  display: block;
+  margin-top: 2px;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .7px;
+  text-transform: uppercase;
+  color: var(--acento);
+}
+.guardada-txt small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: var(--texto-3);
+}
+
+/* a que já está em campo se anuncia pela borda, e a seta dá lugar ao campo */
+.item-guardada.ativa .guardada {
+  background: linear-gradient(160deg, rgba(0, 232, 132, .12), rgba(14, 21, 29, .92));
+  box-shadow: inset 0 0 0 1px var(--acento-escuro);
+}
+.item-guardada.ativa .opcao-seta { color: var(--acento); }
+
+/* tela estreita: as medidas dobram em vez de cortar o número no meio —
+   "Sintonia 10…" é pior que duas linhas */
+@media (max-width: 360px) {
+  .guardada-txt small { white-space: normal; line-height: 1.35; }
+}
+
+/* lixeira menor que a das fichas: aqui ela divide a linha com a escalação */
+.guardada-apagar {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 77, 79, .8);
+  box-shadow: inset 0 0 0 1px rgba(255, 77, 79, .28);
+  transition: transform .14s, background .15s;
+}
+.guardada-apagar svg { width: 17px; height: 17px; }
+.guardada-apagar:active { transform: scale(.9); background: rgba(255, 77, 79, .16); }
+
 /* ---- palco da carta no editor ---- */
 
 .palco-carta {

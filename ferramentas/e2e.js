@@ -105,15 +105,17 @@ function arrastarRadar(indiceEixo, fracao) {
   svg.dispatchEvent(new PointerEvent('pointerup', op));
 }
 
+const LOJAS = ['jogadores', 'comissao', 'escalacao', 'time', 'escalacoes'];
+
 async function limparBanco() {
   const db = await new Promise((res, rej) => {
-    const r = indexedDB.open('meu-time-db', 2);
+    const r = indexedDB.open('meu-time-db', 3);
     r.onsuccess = () => res(r.result);
     r.onerror = () => rej(r.error);
   });
   await new Promise((res, rej) => {
-    const t = db.transaction(['jogadores', 'comissao', 'escalacao', 'time'], 'readwrite');
-    ['jogadores', 'comissao', 'escalacao', 'time'].forEach((s) => t.objectStore(s).clear());
+    const t = db.transaction(LOJAS, 'readwrite');
+    LOJAS.forEach((s) => t.objectStore(s).clear());
     t.oncomplete = res;
     t.onerror = () => rej(t.error);
   });
@@ -816,6 +818,121 @@ const TESTES = [
     // a bolinha de antes tinha 52 de raio: 8.500 pixels no total. A carta
     // mede 7,4 por 10,36 ems — mais de trinta mil.
     return { pixelsDeMetal: metal, bolinhaTeria: Math.round(Math.PI * 52 * 52), ok: metal > 20000 };
+  }],
+
+  ['o elenco recebe os onze, e o time entra inteiro em campo', async () => {
+    // o fichário só guarda time completo: o teste precisa dos onze em campo
+    const { DB } = await import('../js/db.js');
+    const { slotsDaTatica } = await import('../js/taticas.js');
+    const slots = {};
+    for (const [i, slot] of slotsDaTatica('4-3-3', 'Clássico').entries()) {
+      const id = 'e2e-' + slot.id;
+      await DB.salvarJogador({
+        id, apelido: 'TITULAR' + (i + 1), posicao: slot.pos, posicoes: [], foto: '',
+        ...(slot.pos === 'GOL'
+          ? { ela: 74, man: 72, ref: 78, pos: 70, rep: 58, vel: 52 }
+          : { rit: 70, fin: 66, pas: 72, dri: 68, def: 66, fis: 70 }),
+      });
+      slots[slot.id] = id;
+    }
+    await DB.salvarEscalacao({ formacao: '4-3-3', variacao: 'Clássico', slots });
+    location.reload();
+    await espera(99999);
+  }, { recarrega: true }],
+
+  ['o fichário recusa time pela metade e guarda o time inteiro', async () => {
+    await ate(() => $('#topo-sub').textContent.includes('11/11'), { oque: 'os onze em campo' });
+
+    // abre uma vaga: com o time pela metade, o deslizar tem que recusar
+    const slot = $('.slot[data-slot="mei"]');
+    const quemSaiu = slot.querySelector('.carta[data-jogador]').dataset.jogador;
+    toque(slot);
+    toque(await ate(() => $('.acoes-carta button[data-acao="tirar"]'), { oque: 'as ações da carta' }));
+    await ate(() => $('#topo-sub').textContent.includes('10/11'), { oque: 'a vaga aberta' });
+
+    toque($('#btn-tatica'));
+    toque(await ate(() => $('#abrir-fichario'), { oque: 'a porta do fichário' }));
+    await ate(() => $('#in-nome-escalacao'), { oque: 'a ficha das escalações' });
+    const avisoDeFalta = $('#folha-corpo .ajuda')?.textContent.replace(/\s+/g, ' ').trim() || null;
+    escrever($('#in-nome-escalacao'), 'PELA METADE');
+    deslizar('#guardar-escalacao');
+    await espera(500);
+    const recusou = !$('.item-guardada');
+
+    // devolve o jogador à vaga e guarda o time inteiro
+    toque($('#folha-fechar'));
+    await espera(400);
+    const naReserva = await ate(() => $(`.item-trilho .carta[data-jogador="${quemSaiu}"]`),
+      { oque: 'o titular na reserva' });
+    toque(naReserva.closest('.item-trilho'));
+    toque(await ate(() => $('.acoes-carta button[data-acao="escalar"]'), { oque: 'o atalho de escalar' }));
+    await ate(() => $('#topo-sub').textContent.includes('11/11'), { oque: 'o time completo de novo' });
+
+    toque($('#btn-tatica'));
+    toque(await ate(() => $('#abrir-fichario'), { oque: 'a porta do fichário' }));
+    const campo = await ate(() => $('#in-nome-escalacao'), { oque: 'a ficha das escalações' });
+    // com os onze em campo não há aviso nenhum na ficha: só o nome e a lista
+    const semAviso = !$('#folha-corpo .ajuda');
+    escrever(campo, 'TIME DE GUERRA');
+    deslizar('#guardar-escalacao');
+
+    const item = await ate(() => $('.item-guardada'), { oque: 'a escalação no fichário' });
+    const { DB } = await import('../js/db.js');
+    const noBanco = (await DB.listarGuardadas()).map((g) => g.nome);
+
+    return {
+      avisoDeFalta, recusouPelaMetade: recusou, semAvisoComOsOnze: semAviso,
+      nome: item.querySelector('.guardada-txt b').textContent,
+      medidas: item.querySelector('.guardada-txt small').textContent,
+      marcadaComoEmCampo: item.classList.contains('ativa'),
+      noBanco,
+      ok: recusou && semAviso && /Falta 1 jogador/.test(avisoDeFalta || '')
+          && item.querySelector('.guardada-txt b').textContent === 'TIME DE GUERRA'
+          && item.classList.contains('ativa')
+          && /Força \d+ · Sintonia \d+%/.test(item.querySelector('.guardada-txt small').textContent)
+          && noBanco.length === 1 && noBanco[0] === 'TIME DE GUERRA',
+    };
+  }],
+
+  ['a guardada volta inteira ao campo, e apagar pergunta antes', async () => {
+    const emCampo = () => $$('.slot')
+      .map((s) => s.dataset.slot + ':' + (s.querySelector('.carta[data-jogador]')?.dataset.jogador || ''))
+      .filter((par) => !par.endsWith(':')).join();
+    const tatica = () => $('#tatica-nome').textContent + ' ' + $('#tatica-variacao').textContent;
+    const guardada = { tatica: tatica(), time: emCampo() };
+
+    toque($('#folha-fechar'));
+    await espera(400);
+    toque($('#btn-tatica'));
+    const opcoes = await ate(() => ($$('.opcao-tatica').length ? $$('.opcao-tatica') : null), { oque: 'as táticas' });
+    toque(opcoes.find((o) => !o.classList.contains('ativa')));
+    await espera(900);
+    const noMeio = tatica();
+
+    toque($('#btn-tatica'));
+    toque(await ate(() => $('#abrir-fichario'), { oque: 'a porta do fichário' }));
+    toque(await ate(() => $('.item-guardada .guardada'), { oque: 'a escalação guardada' }));
+    await ate(() => tatica() === guardada.tatica, { oque: 'a tática guardada de volta' });
+    await espera(800);
+    const voltou = { tatica: tatica(), time: emCampo(), fichaFechou: !$('#folha').classList.contains('aberta') };
+
+    // apagar é destrutivo: pergunta antes, e desistir não apaga
+    toque($('#btn-tatica'));
+    toque(await ate(() => $('#abrir-fichario'), { oque: 'a porta do fichário' }));
+    toque(await ate(() => $('.guardada-apagar'), { oque: 'a lixeira da ficha' }));
+    await ate(() => $('#dialogo-fundo').classList.contains('aberto'), { oque: 'a confirmação' });
+    toque($('#dialogo-nao'));
+    await espera(400);
+    const sobrou = $$('.item-guardada').length;
+    toque($('#folha-fechar'));
+    await espera(400);
+
+    return {
+      guardada: guardada.tatica, taticaNoMeio: noMeio, ...voltou,
+      timeGuardado: guardada.time, fichasDepoisDeDesistir: sobrou,
+      ok: noMeio !== guardada.tatica && voltou.tatica === guardada.tatica
+          && voltou.time === guardada.time && voltou.fichaFechou && sobrou === 1,
+    };
   }],
 
   ['funciona offline: tudo que o app precisa está no cache', async () => {

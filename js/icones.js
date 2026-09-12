@@ -21,6 +21,9 @@ export const ic = {
   campo: svg('<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M12 4v16"/><circle cx="12" cy="12" r="3"/>'),
   partilha: svg('<path d="M12 15V3"/><path d="m8 7 4-4 4 4"/><path d="M20 13v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6"/>'),
   baixar: svg('<path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M20 13v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6"/>'),
+  confere: svg('<path d="m5 12.5 4.6 4.5L19 7"/>'),
+  // o marcador de página: o gesto universal de "guardado para depois"
+  marcador: svg('<path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4.2L5 21V4a1 1 0 0 1 1-1Z"/>'),
   // dedo parado na tela: o ponto de toque com as ondas em volta
   segurar: svg('<circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/><path d="M7.2 16.8a6.8 6.8 0 0 1 0-9.6"/><path d="M16.8 7.2a6.8 6.8 0 0 1 0 9.6"/><path d="M3.6 20.4a11.9 11.9 0 0 1 0-16.8"/><path d="M20.4 3.6a11.9 11.9 0 0 1 0 16.8"/>'),
 };
