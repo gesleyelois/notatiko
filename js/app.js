@@ -1660,9 +1660,7 @@ function folhaTatica() {
         <span class="opcao-icone">${ic.marcador}</span>
         <span class="opcao-txt">
           <b>Minhas escalações</b>
-          <i>${guardadas
-              ? `${guardadas} no fichário · guardar a que está em campo`
-              : 'Guarde a que está em campo e devolva quando quiser'}</i>
+          <i>${guardadas ? `${guardadas} no fichário` : 'Nada guardado ainda'}</i>
         </span>
         <span class="opcao-seta">${ic.seta}</span>
       </button>
@@ -1711,6 +1709,19 @@ const nomeDaTatica = ({ formacao, variacao }) => `${formacao} ${variacao}`;
 // sem nome dado, a escalação se chama a tática — guardar não exige digitar
 const nomePara = (texto) => texto || nomeDaTatica(estado.escalacao);
 
+/* Fichário é de time pronto: escalação pela metade não se guarda.
+
+   Meio time guardado não serve para nada — voltar ao campo devolveria as
+   mesmas vagas abertas, e a Força de sete jogadores não compara com a de
+   onze. Então o que falta é dito antes, na própria ficha, e o deslizar
+   recusa em vez de guardar um rascunho.                                  */
+const faltamParaOsOnze = () => slotsFormacao().length - idsEscalados().size;
+
+const faltamHTML = () => {
+  const faltam = faltamParaOsOnze();
+  return faltam === 1 ? 'Falta 1 jogador para os onze' : `Faltam ${faltam} jogadores para os onze`;
+};
+
 function itemGuardadaHTML(g) {
   const escalacao = normalizarEscalacao(g, estado.jogadores);
   const slots = slotsDe(escalacao);
@@ -1725,12 +1736,11 @@ function itemGuardadaHTML(g) {
     .map((slot) => `<b class="${escalacao.slots[slot.id] ? '' : 'aberta'}"
                        style="left:${slot.x}%;top:${slot.y}%"></b>`).join('');
 
-  // duas linhas curtas em vez de uma que dobra: a tática com a contagem, e
-  // depois as duas medidas do placar
-  const linhaTatica = `${nomeDaTatica(escalacao)} · ${escalados} de ${slots.length}`;
+  // só a tática e as duas medidas do placar: quantas vagas estão abertas já
+  // se vê nas bolinhas apagadas do campinho
   const medidas = escalados
     ? `Força ${forca} · Sintonia ${sint}%`
-    : 'Os jogadores saíram do elenco';
+    : 'Sem jogadores no elenco';
 
   return `
     <div class="item-guardada ${emCampo ? 'ativa' : ''}">
@@ -1738,7 +1748,7 @@ function itemGuardadaHTML(g) {
         ${miniCampoHTML(pontos, 'mini-guardada')}
         <span class="guardada-txt">
           <b>${escapar(g.nome)}</b>
-          <i>${linhaTatica}</i>
+          <i>${nomeDaTatica(escalacao)}</i>
           <small>${medidas}</small>
         </span>
         <span class="opcao-seta">${emCampo ? ic.confere : ic.seta}</span>
@@ -1749,30 +1759,19 @@ function itemGuardadaHTML(g) {
 }
 
 function folhaEscalacoes() {
-  const corpoHTML = () => {
-    const escalados = idsEscalados().size;
-    const total = slotsFormacao().length;
-
-    return `
+  const corpoHTML = () => `
       <div class="cena-guardar">
         <div class="entrada-titulo" id="in-nome-escalacao" ${CAMPO_EDITAVEL}
              autocapitalize="characters" aria-label="Nome da escalação"
              data-vazio="${nomeDaTatica(estado.escalacao)}"></div>
-        <p class="ajuda">
-          Guarda a tática e os onze como estão — ${escalados} de ${total} em campo.
-          Sem nome, ela se chama a tática.
-        </p>
+        ${faltamParaOsOnze() ? `<p class="ajuda">${faltamHTML()}</p>` : ''}
       </div>
 
       ${estado.guardadas.length ? `
         <div class="titulo-bloco">No fichário</div>
         <div class="lista-guardadas">${estado.guardadas.map(itemGuardadaHTML).join('')}</div>`
-      : `<div class="dica-bloco">
-           Nada guardado ainda. Escale o time, deslize para guardar e ele volta
-           inteiro quando você quiser — dá para ter um time para cada jogo.
-         </div>`}
+      : '<div class="dica-bloco">Nada guardado ainda.</div>'}
       <div style="height:10px"></div>`;
-  };
 
   // O deslizar se consome ao confirmar (é o que impede o duplo envio), então
   // guardar e apagar repintam a folha em vez de reabri-la: a lista mostra o
@@ -1823,8 +1822,9 @@ function folhaEscalacoes() {
 }
 
 async function guardarEscalacaoAtual(nome) {
-  if (!idsEscalados().size) {
-    toast('Escale alguém antes de guardar');
+  if (faltamParaOsOnze()) {
+    // a ficha já diz quantos faltam: a torrada só responde ao gesto
+    toast('Time incompleto');
     return false;
   }
 
@@ -1872,14 +1872,14 @@ async function usarGuardada(g) {
   efeitos.tocar('tatica');
   setTimeout(() => narrador.falar('tatica'), 240);
   toast(perdidos
-    ? `${g.nome} em campo — ${perdidos} ${perdidos === 1 ? 'vaga ficou aberta' : 'vagas ficaram abertas'}`
+    ? `${g.nome} em campo · ${perdidos} ${perdidos === 1 ? 'vaga aberta' : 'vagas abertas'}`
     : `${g.nome} em campo`);
 }
 
 async function apagarGuardada(g) {
   const apagar = await confirmar({
     titulo: 'Apagar escalação',
-    texto: `"${g.nome}" sai do fichário. O time em campo e o elenco ficam como estão.`,
+    texto: `"${g.nome}" sai do fichário. O time em campo não muda.`,
     acao: 'Apagar',
   });
   if (!apagar) return false;

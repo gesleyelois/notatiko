@@ -16,7 +16,7 @@ do navegador.
   Confirma-se deslizando, não apertando botão.
 - **Escalar** — arraste do elenco para o campo, ou toque no jogador e depois na posição. As cartas voam até o lugar.
 - **19 táticas** — 10 formações com variações (4-4-2 Losango, 4-3-3 Falso 9, 3-5-2 Alas ofensivos…), escolhidas pelo desenho do time.
-- **Guardar escalações** — o time montado vira ficha no fichário, com nome:
+- **Guardar escalações** — o time completo vira ficha no fichário, com nome:
   a tática, a variação e quem estava em cada vaga. Depois, um toque devolve os
   onze ao campo — dá para ter um time para cada jogo. Fica atrás da placa da
   tática.
@@ -115,10 +115,15 @@ guardado nunca discorda do campo. Quem foi dispensado deixa a vaga aberta: a
 bolinha no campinho da ficha fica apagada, e voltar ao campo escala os que
 ficaram. É a mesma conferência que apara a escalação que vem do banco.
 
-Guardar não exige digitar: o campo de nome já vem anunciando o nome que a
-escalação teria, que é a própria tática. Guardar com um nome que já existe
-pergunta antes de substituir — é essa a forma de atualizar uma ficha, em vez
-de ficar com duas com o mesmo rótulo.
+Só time completo entra: meio time guardado não serve para nada — voltar ao
+campo devolveria as mesmas vagas abertas, e a Força de sete jogadores não
+compara com a de onze. Com o time pela metade a ficha diz quantos faltam e o
+deslizar recusa.
+
+Guardar não exige digitar: o campo de nome vazio já mostra o nome que a
+escalação terá, que é a própria tática. Nome que já existe pergunta antes de
+substituir — é essa a forma de atualizar uma ficha, em vez de ficar com duas
+com o mesmo rótulo.
 
 O fichário mora atrás da placa da tática, não no placar. O placar é uma linha
 só e já está cheio: um sexto glifo ali custaria o nome do clube, que é a
@@ -294,12 +299,11 @@ Com o app aberto, no console do navegador:
 const t = await import('./ferramentas/e2e.js'); await t.rodar();
 ```
 
-São 36 testes ponta a ponta contra o DOM e o IndexedDB de verdade: fundar o
+São 37 testes ponta a ponta contra o DOM e o IndexedDB de verdade: fundar o
 clube, criar jogador pela carta, moldar o radar, escalar, trocar de tática,
-guardar a escalação e devolvê-la inteira ao campo depois de mexer na tática,
-sobreviver a uma recarga (com o fichário), o campo ocupar a tela, não sobrar
-comportamento de página web, o círculo do meio-campo ser redondo, a escalação
-virar imagem do tamanho certo, a marca do clube sair inteira e os onze irem
-como carta (os dois conferidos pixel a pixel) e o cache offline estar
-completo. Dois deles recarregam a página — depois da recarga, continue com
-`await t.continuar()`.
+sobreviver a uma recarga, o campo ocupar a tela, não sobrar comportamento de
+página web, o círculo do meio-campo ser redondo, o fichário recusar time pela
+metade e devolver a guardada inteira ao campo, a escalação virar imagem do
+tamanho certo, a marca do clube sair inteira e os onze irem como carta (os
+dois conferidos pixel a pixel) e o cache offline estar completo. Três deles
+recarregam a página — depois da recarga, continue com `await t.continuar()`.
