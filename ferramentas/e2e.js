@@ -850,8 +850,7 @@ const TESTES = [
     toque(await ate(() => $('.acoes-carta button[data-acao="tirar"]'), { oque: 'as ações da carta' }));
     await ate(() => $('#topo-sub').textContent.includes('10/11'), { oque: 'a vaga aberta' });
 
-    toque($('#btn-tatica'));
-    toque(await ate(() => $('#abrir-fichario'), { oque: 'a porta do fichário' }));
+    toque($('#btn-escalacoes'));
     await ate(() => $('#in-nome-escalacao'), { oque: 'a ficha das escalações' });
     const avisoDeFalta = $('#folha-corpo .ajuda')?.textContent.replace(/\s+/g, ' ').trim() || null;
     escrever($('#in-nome-escalacao'), 'PELA METADE');
@@ -868,8 +867,11 @@ const TESTES = [
     toque(await ate(() => $('.acoes-carta button[data-acao="escalar"]'), { oque: 'o atalho de escalar' }));
     await ate(() => $('#topo-sub').textContent.includes('11/11'), { oque: 'o time completo de novo' });
 
+    // a ficha da tática também abre o fichário, e diz quantas estão lá
     toque($('#btn-tatica'));
-    toque(await ate(() => $('#abrir-fichario'), { oque: 'a porta do fichário' }));
+    const porta = await ate(() => $('#abrir-fichario'), { oque: 'a porta do fichário' });
+    const chamada = porta.querySelector('.opcao-txt i').textContent.trim();
+    toque(porta);
     const campo = await ate(() => $('#in-nome-escalacao'), { oque: 'a ficha das escalações' });
     // com os onze em campo não há aviso nenhum na ficha: só o nome e a lista
     const semAviso = !$('#folha-corpo .ajuda');
@@ -882,11 +884,13 @@ const TESTES = [
 
     return {
       avisoDeFalta, recusouPelaMetade: recusou, semAvisoComOsOnze: semAviso,
+      glifoNoPlacar: !!$('#btn-escalacoes'), chamadaNaFichaDaTatica: chamada,
       nome: item.querySelector('.guardada-txt b').textContent,
       medidas: item.querySelector('.guardada-txt small').textContent,
       marcadaComoEmCampo: item.classList.contains('ativa'),
       noBanco,
       ok: recusou && semAviso && /Falta 1 jogador/.test(avisoDeFalta || '')
+          && !!$('#btn-escalacoes')
           && item.querySelector('.guardada-txt b').textContent === 'TIME DE GUERRA'
           && item.classList.contains('ativa')
           && /Força \d+ · Sintonia \d+%/.test(item.querySelector('.guardada-txt small').textContent)
@@ -909,16 +913,14 @@ const TESTES = [
     await espera(900);
     const noMeio = tatica();
 
-    toque($('#btn-tatica'));
-    toque(await ate(() => $('#abrir-fichario'), { oque: 'a porta do fichário' }));
+    toque($('#btn-escalacoes'));
     toque(await ate(() => $('.item-guardada .guardada'), { oque: 'a escalação guardada' }));
     await ate(() => tatica() === guardada.tatica, { oque: 'a tática guardada de volta' });
     await espera(800);
     const voltou = { tatica: tatica(), time: emCampo(), fichaFechou: !$('#folha').classList.contains('aberta') };
 
     // apagar é destrutivo: pergunta antes, e desistir não apaga
-    toque($('#btn-tatica'));
-    toque(await ate(() => $('#abrir-fichario'), { oque: 'a porta do fichário' }));
+    toque($('#btn-escalacoes'));
     toque(await ate(() => $('.guardada-apagar'), { oque: 'a lixeira da ficha' }));
     await ate(() => $('#dialogo-fundo').classList.contains('aberto'), { oque: 'a confirmação' });
     toque($('#dialogo-nao'));

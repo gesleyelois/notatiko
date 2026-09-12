@@ -18,8 +18,8 @@ do navegador.
 - **19 táticas** — 10 formações com variações (4-4-2 Losango, 4-3-3 Falso 9, 3-5-2 Alas ofensivos…), escolhidas pelo desenho do time.
 - **Guardar escalações** — o time completo vira ficha no fichário, com nome:
   a tática, a variação e quem estava em cada vaga. Depois, um toque devolve os
-  onze ao campo — dá para ter um time para cada jogo. Fica atrás da placa da
-  tática.
+  onze ao campo — dá para ter um time para cada jogo. O marcador no placar
+  abre o fichário.
 - **Força e Sintonia** — duas medalhas no placar, com o arco contando o valor.
   Toque para ver de onde cada número saiu.
 - **Compartilhar** — a escalação vira uma imagem do campo, com as cartas dos
@@ -125,11 +125,17 @@ escalação terá, que é a própria tática. Nome que já existe pergunta antes
 substituir — é essa a forma de atualizar uma ficha, em vez de ficar com duas
 com o mesmo rótulo.
 
-O fichário mora atrás da placa da tática, não no placar. O placar é uma linha
-só e já está cheio: um sexto glifo ali custaria o nome do clube, que é a
-identidade do time no topo do app — num celular de 390 pontos, o nome cai de
-128 para 90 pontos de largura e "Meu Time" já não cabe. E a prancheta da
-tática é o lugar do desenho do time; é ali que se procura o time já desenhado.
+O fichário se abre pelo marcador no placar, e também pela ficha da tática —
+lá a primeira linha leva a ele e diz quantas escalações estão guardadas.
+
+Ele nasceu só atrás da placa da tática, e estava escondido: quem quer guardar
+o time olha para o placar, onde já estão as ações da escalação. O glifo no
+placar é pago em pontos de largura, porque a linha do placar não cresce: o vão
+entre os controles cai de 8 para 7 e os glifos de 30 para 28, o que devolve 16
+dos 35 pontos que o marcador ocupa. O resto sai do nome do clube — em 390
+pontos de tela ele ainda cabe inteiro; em 375 e abaixo passa a cortar com
+reticências, como já cortava em 320. Nome inteiro há na ficha do clube e na
+imagem compartilhada; a opção de guardar, se não se vê, não existe.
 
 ## Rodando localmente
 
