@@ -105,15 +105,17 @@ function arrastarRadar(indiceEixo, fracao) {
   svg.dispatchEvent(new PointerEvent('pointerup', op));
 }
 
+const LOJAS = ['jogadores', 'comissao', 'escalacao', 'time', 'escalacoes'];
+
 async function limparBanco() {
   const db = await new Promise((res, rej) => {
-    const r = indexedDB.open('meu-time-db', 2);
+    const r = indexedDB.open('meu-time-db', 3);
     r.onsuccess = () => res(r.result);
     r.onerror = () => rej(r.error);
   });
   await new Promise((res, rej) => {
-    const t = db.transaction(['jogadores', 'comissao', 'escalacao', 'time'], 'readwrite');
-    ['jogadores', 'comissao', 'escalacao', 'time'].forEach((s) => t.objectStore(s).clear());
+    const t = db.transaction(LOJAS, 'readwrite');
+    LOJAS.forEach((s) => t.objectStore(s).clear());
     t.oncomplete = res;
     t.onerror = () => rej(t.error);
   });
@@ -283,6 +285,59 @@ const TESTES = [
              mudouOCampo: antes !== depois, ok: antes !== depois };
   }],
 
+  ['guarda a escalação com nome, e o fichário a mede parada', async () => {
+    toque($('#btn-tatica'));
+    const porta = await ate(() => $('#abrir-fichario'), { oque: 'a porta do fichário' });
+    toque(porta);
+    const campo = await ate(() => $('#in-nome-escalacao'), { oque: 'a ficha das escalações' });
+    // o campo vazio já anuncia o nome que a escalação teria: a própria tática
+    const sugestao = campo.dataset.vazio;
+    escrever(campo, 'TIME DE GUERRA');
+    deslizar('#guardar-escalacao');
+
+    const item = await ate(() => $('.item-guardada'), { oque: 'a escalação no fichário' });
+    const nome = item.querySelector('.guardada-txt b').textContent;
+    const medidas = item.querySelector('.guardada-txt small').textContent;
+    return {
+      nomeSugerido: sugestao, nome, medidas,
+      marcadaComoEmCampo: item.classList.contains('ativa'),
+      ok: nome === 'TIME DE GUERRA' && item.classList.contains('ativa')
+          && /Força \d+/.test(medidas),
+    };
+  }],
+
+  ['a guardada volta inteira ao campo depois de mexer na tática', async () => {
+    const emCampo = () => $$('.slot')
+      .map((s) => s.dataset.slot + ':' + (s.querySelector('.carta[data-jogador]')?.dataset.jogador || ''))
+      .filter((p) => !p.endsWith(':')).join();
+    const tatica = () => $('#tatica-nome').textContent + ' ' + $('#tatica-variacao').textContent;
+
+    const guardada = { tatica: tatica(), time: emCampo() };
+
+    toque($('#folha-fechar'));
+    await espera(400);
+    toque($('#btn-tatica'));
+    const opcoes = await ate(() => ($$('.opcao-tatica').length ? $$('.opcao-tatica') : null), { oque: 'as táticas' });
+    toque(opcoes.find((o) => !o.classList.contains('ativa')));
+    await espera(900);
+    const noMeio = tatica();
+
+    toque($('#btn-tatica'));
+    toque(await ate(() => $('#abrir-fichario'), { oque: 'a porta do fichário' }));
+    toque(await ate(() => $('.item-guardada .guardada'), { oque: 'a escalação guardada' }));
+    await ate(() => tatica() === guardada.tatica, { oque: 'a tática guardada de volta' });
+    await espera(800);
+
+    return {
+      guardada: guardada.tatica, taticaNoMeio: noMeio, voltou: tatica(),
+      timeGuardado: guardada.time, timeDeVolta: emCampo(),
+      fichaFechou: !$('#folha').classList.contains('aberta'),
+      ok: noMeio !== guardada.tatica && tatica() === guardada.tatica
+          && emCampo() === guardada.time
+          && !$('#folha').classList.contains('aberta'),
+    };
+  }],
+
   ['o que foi criado sobrevive a fechar o aplicativo', async () => {
     const antes = {
       time: $('#topo-nome').textContent,
@@ -294,7 +349,7 @@ const TESTES = [
     await espera(99999);
   }, { recarrega: true }],
 
-  ['tudo voltou igual depois da recarga', async () => {
+  ['tudo voltou igual depois da recarga, o fichário inclusive', async () => {
     await ate(() => $('#topo-nome').textContent !== 'Meu Time', { oque: 'o time carregado' });
     await espera(600);
     const antes = JSON.parse(sessionStorage.getItem('e2e-antes') || '{}');
@@ -303,7 +358,27 @@ const TESTES = [
       elenco: $('#qtd-elenco').textContent,
       comissao: $('#qtd-comissao').textContent,
     };
-    return { antes, agora, ok: JSON.stringify(antes) === JSON.stringify(agora) };
+
+    toque($('#btn-tatica'));
+    toque(await ate(() => $('#abrir-fichario'), { oque: 'a porta do fichário' }));
+    const guardadas = await ate(() => ($$('.item-guardada').length ? $$('.item-guardada') : null),
+      { oque: 'o fichário depois da recarga' });
+    const nomes = guardadas.map((el) => el.querySelector('.guardada-txt b').textContent);
+
+    // apagar é destrutivo: pergunta antes, e a resposta é um X ou uma lixeira
+    toque($('.guardada-apagar'));
+    await ate(() => $('#dialogo-fundo').classList.contains('aberto'), { oque: 'a confirmação' });
+    toque($('#dialogo-nao'));
+    await espera(300);
+    const sobrou = $$('.item-guardada').length;
+
+    toque($('#folha-fechar'));
+    await espera(400);
+    return {
+      antes, agora, guardadas: nomes, apagarPergunta: sobrou === nomes.length,
+      ok: JSON.stringify(antes) === JSON.stringify(agora)
+          && nomes.includes('TIME DE GUERRA') && sobrou === nomes.length,
+    };
   }],
 
   ['o campo domina a tela no celular', async () => {

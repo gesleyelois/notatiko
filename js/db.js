@@ -1,6 +1,6 @@
 // Camada de persistência offline usando IndexedDB.
 const DB_NAME = 'meu-time-db';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 function openDb() {
   return new Promise((resolve, reject) => {
@@ -19,8 +19,23 @@ function openDb() {
       if (!db.objectStoreNames.contains('comissao')) {
         db.createObjectStore('comissao', { keyPath: 'id' });
       }
+      // 'escalacao' guarda a que está em campo, uma só; 'escalacoes' é o
+      // fichário: uma escalação por registro, com nome dado pelo técnico.
+      if (!db.objectStoreNames.contains('escalacoes')) {
+        db.createObjectStore('escalacoes', { keyPath: 'id' });
+      }
     };
     req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function lerTudo(storeName) {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const store = db.transaction(storeName, 'readonly').objectStore(storeName);
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result || []);
     req.onerror = () => reject(req.error);
   });
 }
@@ -44,13 +59,7 @@ export const DB = {
     return tx('jogadores', 'readwrite', (store) => store.delete(id));
   },
   async listarJogadores() {
-    const db = await openDb();
-    return new Promise((resolve, reject) => {
-      const store = db.transaction('jogadores', 'readonly').objectStore('jogadores');
-      const req = store.getAll();
-      req.onsuccess = () => resolve(req.result || []);
-      req.onerror = () => reject(req.error);
-    });
+    return lerTudo('jogadores');
   },
   async salvarMembro(membro) {
     return tx('comissao', 'readwrite', (store) => store.put(membro));
@@ -59,13 +68,7 @@ export const DB = {
     return tx('comissao', 'readwrite', (store) => store.delete(id));
   },
   async listarComissao() {
-    const db = await openDb();
-    return new Promise((resolve, reject) => {
-      const store = db.transaction('comissao', 'readonly').objectStore('comissao');
-      const req = store.getAll();
-      req.onsuccess = () => resolve(req.result || []);
-      req.onerror = () => reject(req.error);
-    });
+    return lerTudo('comissao');
   },
   async salvarTime(time) {
     return tx('time', 'readwrite', (store) => store.put({ id: 'principal', ...time }));
@@ -90,5 +93,17 @@ export const DB = {
       req.onsuccess = () => resolve(req.result || null);
       req.onerror = () => reject(req.error);
     });
+  },
+  /* O fichário: escalações guardadas com nome, para voltarem ao campo
+     inteiras. Cada registro tem o próprio id — guardar com o mesmo nome
+     substitui, e é o app que pergunta antes.                            */
+  async guardarEscalacao(escalacao) {
+    return tx('escalacoes', 'readwrite', (store) => store.put(escalacao));
+  },
+  async removerGuardada(id) {
+    return tx('escalacoes', 'readwrite', (store) => store.delete(id));
+  },
+  async listarGuardadas() {
+    return lerTudo('escalacoes');
   },
 };
